@@ -3750,6 +3750,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
 		audio.write	= hdmi_writeb;
 		audio.read	= hdmi_readb;
 		audio.mod	= hdmi_modb;
+		audio.eld	= hdmi->connector.eld;
 		hdmi->enable_audio = dw_hdmi_i2s_audio_enable;
 		hdmi->disable_audio = dw_hdmi_i2s_audio_disable;
 
