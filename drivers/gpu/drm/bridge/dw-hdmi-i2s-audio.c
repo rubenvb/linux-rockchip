@@ -188,7 +188,7 @@ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
 	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF1);
 
 	/* Set Channel Allocation */
-	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF2);
+	hdmi_write(audio, hparms->cea.channel_allocation, HDMI_FC_AUDICONF2);
 
 	/* Set LFEPBLDOWN-MIX INH and LSV */
 	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF3);
