@@ -66,6 +66,7 @@ struct rockchip_atomic_commit {
 	struct drm_atomic_state *state;
 	struct drm_device *dev;
 	struct mutex lock;
+	int async;
 };
 
 struct rockchip_crtc_state {

@@ -227,7 +227,7 @@ static void rockchip_crtc_wait_for_update(struct drm_crtc *crtc)
  * of waiting for vblank_count to change.
  */
 static void
-rockchip_atomic_wait_for_complete(struct drm_device *dev, struct drm_atomic_state *old_state)
+rockchip_atomic_wait_for_complete(struct drm_device *dev, struct drm_atomic_state *old_state, int wait_vblank)
 {
 	struct drm_crtc_state *old_crtc_state;
 	struct drm_crtc *crtc;
@@ -258,7 +258,8 @@ rockchip_atomic_wait_for_complete(struct drm_device *dev, struct drm_atomic_stat
 		if (!old_crtc_state->enable)
 			continue;
 
-		rockchip_crtc_wait_for_update(crtc);
+		if (wait_vblank)
+		    rockchip_crtc_wait_for_update(crtc);
 		drm_crtc_vblank_put(crtc);
 	}
 }
@@ -294,7 +295,7 @@ rockchip_atomic_commit_complete(struct rockchip_atomic_commit *commit)
 
 	drm_atomic_helper_commit_planes(dev, state, true);
 
-	rockchip_atomic_wait_for_complete(dev, state);
+	rockchip_atomic_wait_for_complete(dev, state, !commit->async);
 
 	drm_atomic_helper_cleanup_planes(dev, state);
 
@@ -329,6 +330,7 @@ int rockchip_drm_atomic_commit(struct drm_device *dev,
 
 	commit->dev = dev;
 	commit->state = state;
+	commit->async = async;
 
 	if (async)
 		schedule_work(&commit->work);
