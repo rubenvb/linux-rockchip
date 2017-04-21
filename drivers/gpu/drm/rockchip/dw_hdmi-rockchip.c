@@ -510,9 +510,15 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 		return MODE_BAD;
 
 	hdmi = to_rockchip_hdmi(encoder);
-	if (hdmi->dev_type == RK3368_HDMI && mode->clock > 340000 &&
+	if ((hdmi->dev_type == RK3368_HDMI || hdmi->dev_type == RK3328_HDMI) &&
+	    mode->clock > 340000 &&
 	    !drm_mode_is_420(&connector->display_info, mode))
 		return MODE_BAD;
+
+	/* Skip bad clocks for RK3288 */
+	if (hdmi->dev_type == RK3288_HDMI && (mode->clock < 27500 || mode->clock > 340000))
+		return MODE_CLOCK_RANGE;
+
 	/*
 	 * ensure all drm display mode can work, if someone want support more
 	 * resolutions, please limit the possible_crtc, only connect to
