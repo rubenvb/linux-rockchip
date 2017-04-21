@@ -278,6 +278,9 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 	if (mode->clock > INT_MAX / 1000)
 		return MODE_BAD;
 
+	if (mode->clock > 297000)
+		return MODE_BAD;
+
 	if (!encoder) {
 		const struct drm_connector_helper_funcs *funcs;
 
