@@ -411,6 +411,9 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 	    !drm_mode_is_420(&connector->display_info, mode))
 		return MODE_BAD;
 
+	if (mode->clock > 297000)
+		return MODE_BAD;
+
 	if (!encoder) {
 		const struct drm_connector_helper_funcs *funcs;
 
