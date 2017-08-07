@@ -422,6 +422,11 @@ static int rockchip_i2s_set_sysclk(struct snd_soc_dai *cpu_dai, int clk_id,
 	struct rk_i2s_dev *i2s = to_info(cpu_dai);
 	int ret;
 
+	/* reset clock */
+	ret = clk_set_rate(i2s->mclk, 49152000);
+	if (ret)
+		dev_err(i2s->dev, "Fail to set mclk %d\n", ret);
+
 	ret = clk_set_rate(i2s->mclk, freq);
 	if (ret)
 		dev_err(i2s->dev, "Fail to set mclk %d\n", ret);
