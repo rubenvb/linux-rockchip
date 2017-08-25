@@ -3764,20 +3764,14 @@ static irqreturn_t vdpu_irq(int irq, void *dev_id)
 		time_record(task, 1);
 		vpu_debug(DEBUG_IRQ_STATUS, "vdpu_irq dec status %08x\n",
 			  dec_status);
-		if ((dec_status & 0x40001) == 0x40001) {
-			do {
-				dec_status = readl_relaxed(dev->regs +
-							   task->reg_irq);
-			} while ((dec_status & 0x40001) == 0x40001);
-		}
-
-		if (check_irq_err(task, dec_status))
-			atomic_add(1, &pservice->reset_request);
 
 		writel_relaxed(0, dev->regs + task->reg_irq);
 
 		/* set clock gating to save power */
 		writel(task->gating_mask, dev->regs + task->reg_en);
+
+		if (check_irq_err(task, dec_status))
+			atomic_add(1, &pservice->reset_request);
 
 		atomic_add(1, &dev->irq_count_codec);
 		time_diff(task);
