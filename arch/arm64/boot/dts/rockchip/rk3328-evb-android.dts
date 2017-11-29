@@ -553,6 +553,14 @@
 	vcodec-supply = <&vdd_logic>;
 };
 
+&rkvdec_mmu {
+	status = "okay";
+};
+
+&rkvdec_srv {
+	status = "okay";
+};
+
 &rockchip_suspend {
 	status = "okay";
 	rockchip,virtual-poweroff = <1>;
@@ -678,6 +686,14 @@
 };
 
 &vop_mmu {
+	status = "okay";
+};
+
+&vdpu {
+	status = "okay";
+};
+
+&vpu_mmu {
 	status = "okay";
 };
 
