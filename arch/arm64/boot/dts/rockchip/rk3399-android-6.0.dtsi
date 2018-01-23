@@ -473,28 +473,32 @@
 	};
 };
 
-&vpu {
+&rkvdec {
 	status = "okay";
-	/delete-property/ iommus;
-	/* 0 means ion, 1 means drm */
-	allocator = <0>;
+};
+
+&rkvdec_srv {
+	status = "okay";
+};
+
+&vdpu {
+	status = "okay";
+};
+
+&vepu {
+	status = "okay";
+};
+
+&vpu_service {
+	status = "okay";
 };
 
 &vpu_mmu {
-	dbgname = "vpu";
-	compatible = "rockchip,vpu_mmu";
-};
-
-&rkvdec {
 	status = "okay";
-	/delete-property/ iommus;
-	/* 0 means ion, 1 means drm */
-	allocator = <0>;
 };
 
 &vdec_mmu {
-	dbgname = "vdec";
-	compatible = "rockchip,vdec_mmu";
+	status = "okay";
 };
 
 &iep {

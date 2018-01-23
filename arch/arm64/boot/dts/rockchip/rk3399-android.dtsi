@@ -366,6 +366,10 @@
 	status = "okay";
 };
 
+&rkvdec_srv {
+	status = "okay";
+};
+
 &usbdrd_dwc3_0 {
 	dr_mode = "otg";
 };
@@ -378,7 +382,19 @@
 	status = "okay";
 };
 
-&vpu {
+&vdec_mmu {
+	status = "okay";
+};
+
+&vdpu {
+	status = "okay";
+};
+
+&vepu {
+	status = "okay";
+};
+
+&vpu_service {
 	status = "okay";
 };
 
