@@ -1625,6 +1625,9 @@ static void vop_unbind(struct device *dev, struct device *master, void *data)
 	clk_unprepare(vop->aclk);
 	clk_unprepare(vop->hclk);
 	clk_unprepare(vop->dclk);
+
+	if (!vop->is_enabled)
+		enable_irq(vop->irq);
 }
 
 const struct component_ops vop_component_ops = {
