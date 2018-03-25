@@ -636,6 +636,14 @@ static void vop_plane_destroy(struct drm_plane *plane)
 	drm_plane_cleanup(plane);
 }
 
+static void vop_plane_reset(struct drm_plane *plane)
+{
+	drm_atomic_helper_plane_reset(plane);
+
+	if (plane->state)
+		plane->state->zpos = 0;
+}
+
 static int vop_plane_atomic_check(struct drm_plane *plane,
 			   struct drm_plane_state *state)
 {
@@ -822,7 +830,7 @@ static const struct drm_plane_funcs vop_plane_funcs = {
 	.update_plane	= drm_atomic_helper_update_plane,
 	.disable_plane	= drm_atomic_helper_disable_plane,
 	.destroy = vop_plane_destroy,
-	.reset = drm_atomic_helper_plane_reset,
+	.reset = vop_plane_reset,
 	.atomic_duplicate_state = drm_atomic_helper_plane_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_plane_destroy_state,
 };
@@ -998,12 +1006,20 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
 	struct drm_plane_state *old_plane_state, *new_plane_state;
 	struct vop *vop = to_vop(crtc);
 	struct drm_plane *plane;
-	int i;
+	int i, dsp_layer_sel = 0;
 
 	if (WARN_ON(!vop->is_enabled))
 		return;
 
 	spin_lock(&vop->reg_lock);
+
+	/*
+	for_each_new_plane_in_state(old_state, plane, new_plane_state, i) {
+		DRM_DEV_INFO(vop->dev, "dsp_layer_sel i=%d zpos=%d normalized_zpos=%d\n", i, new_plane_state->zpos, new_plane_state->normalized_zpos);
+		dsp_layer_sel |= i << (2 * new_plane_state->normalized_zpos);
+	}
+	VOP_REG_SET(vop, common, dsp_layer_sel, dsp_layer_sel);
+	*/
 
 	vop_cfg_done(vop);
 
@@ -1035,9 +1051,9 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
 			continue;
 
 		drm_framebuffer_get(old_plane_state->fb);
+		WARN_ON(drm_crtc_vblank_get(crtc) != 0);
 		drm_flip_work_queue(&vop->fb_unref_work, old_plane_state->fb);
 		set_bit(VOP_PENDING_FB_UNREF, &vop->pending);
-		WARN_ON(drm_crtc_vblank_get(crtc) != 0);
 	}
 }
 
@@ -1266,10 +1282,13 @@ static int vop_create_crtc(struct vop *vop)
 
 		plane = &vop_win->base;
 		drm_plane_helper_add(plane, &plane_helper_funcs);
-		if (plane->type == DRM_PLANE_TYPE_PRIMARY)
+		if (plane->type == DRM_PLANE_TYPE_PRIMARY) {
 			primary = plane;
-		else if (plane->type == DRM_PLANE_TYPE_CURSOR)
+			drm_plane_create_zpos_property(plane, 0, 0, vop_data->win_size - 2);
+		} else if (plane->type == DRM_PLANE_TYPE_CURSOR) {
 			cursor = plane;
+			drm_plane_create_zpos_immutable_property(plane, vop_data->win_size - 1);
+		}
 	}
 
 	ret = drm_crtc_init_with_planes(drm_dev, crtc, primary, cursor,
@@ -1303,6 +1322,8 @@ static int vop_create_crtc(struct vop *vop)
 			goto err_cleanup_crtc;
 		}
 		drm_plane_helper_add(&vop_win->base, &plane_helper_funcs);
+
+                drm_plane_create_zpos_property(&vop_win->base, 0, 0, vop_data->win_size - 2);
 	}
 
 	port = of_get_child_by_name(dev->of_node, "port");
