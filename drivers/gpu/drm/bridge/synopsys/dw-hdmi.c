@@ -1576,7 +1576,7 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 		break;
 	}
 
-	frame.scan_mode = HDMI_SCAN_MODE_NONE;
+	frame.scan_mode = HDMI_SCAN_MODE_UNDERSCAN;
 
 	/*
 	 * The Designware IP uses a different byte format from standard
@@ -1603,6 +1603,8 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	      ((frame.picture_aspect & 0x3) << 4) |
 	      (frame.active_aspect & 0xf);
 	hdmi_writeb(hdmi, val, HDMI_FC_AVICONF1);
+
+	frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
 
 	/* AVI data byte 3 differences: none */
 	val = ((frame.extended_colorimetry & 0x7) << 4) |
