@@ -41,13 +41,13 @@
 		vin-supply = <&vcc_io>;
 	};
 
-	vcc_host1_5v: vcc_otg_5v: vcc-host1-5v-regulator {
+	vcc_host_5v: vcc_host1_5v: vcc_otg_5v: vcc-host-5v-regulator {
 		compatible = "regulator-fixed";
 		enable-active-high;
 		gpio = <&gpio1 RK_PD2 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&usb20_host_drv>;
-		regulator-name = "vcc_host1_5v";
+		pinctrl-0 = <&usb_host_drv>;
+		regulator-name = "vcc_host_5v";
 		regulator-always-on;
 		vin-supply = <&vcc_sys>;
 	};
@@ -223,8 +223,8 @@
 		};
 	};
 
-	usb2 {
-		usb20_host_drv: usb20-host-drv {
+	usb {
+		usb_host_drv: usb-host-drv {
 			rockchip,pins = <1 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
@@ -251,18 +251,17 @@
 };
 
 &u2phy_host {
+	phy-supply = <&vcc_host1_5v>;
 	status = "okay";
 };
 
 &u2phy_otg {
-	status = "okay";
-};
-
-&uart2 {
+	phy-supply = <&vcc_otg_5v>;
 	status = "okay";
 };
 
 &usb20_otg {
+	dr_mode = "host";
 	status = "okay";
 };
 
