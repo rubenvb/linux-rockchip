@@ -23,7 +23,7 @@
 
 	vcc_sd: sdmmc-regulator {
 		compatible = "regulator-fixed";
-		gpio = <&gpio0 RK_PD6 GPIO_ACTIVE_LOW>;
+		gpio = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdmmc0m1_gpio>;
 		regulator-name = "vcc_sd";
@@ -157,6 +157,10 @@
 	tx_delay = <0x24>;
 	rx_delay = <0x18>;
 	status = "okay";
+};
+
+&gpu {
+	mali-supply = <&vdd_logic>;
 };
 
 &hdmi {
@@ -333,6 +337,8 @@
 };
 
 &tsadc {
+	rockchip,hw-tshut-mode = <0>;
+	rockchip,hw-tshut-polarity = <0>;
 	status = "okay";
 };
 
