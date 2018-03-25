@@ -156,6 +156,13 @@
 		ports = <&vop_out>;
 	};
 
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
 	psci {
 		compatible = "arm,psci-1.0", "arm,psci-0.2";
 		method = "smc";
@@ -206,6 +213,14 @@
 		clock-names = "i2s_clk", "i2s_hclk";
 		dmas = <&dmac 0>, <&dmac 1>;
 		dma-names = "tx", "rx";
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&i2s2m0_mclk
+			     &i2s2m0_sclk
+			     &i2s2m0_lrcktx
+			     &i2s2m0_lrckrx
+			     &i2s2m0_sdo
+			     &i2s2m0_sdi>;
+		pinctrl-1 = <&i2s2m0_sleep>;
 		status = "disabled";
 	};
 
@@ -559,6 +574,43 @@
 		clocks = <&cru ACLK_GPU>, <&cru ACLK_GPU>;
 		clock-names = "bus", "core";
 		resets = <&cru SRST_GPU_A>;
+		#cooling-cells = <2>;
+		operating-points-v2 = <&gpu_opp_table>;
+
+		gpu_power_model: power_model {
+			compatible = "arm,mali-simple-power-model";
+			voltage = <900>;
+			frequency = <500>;
+			static-power = <300>;
+			dynamic-power = <396>;
+			ts = <32000 4700 (-80) 2>;
+			thermal-zone = "soc-thermal";
+		};
+	};
+
+	gpu_opp_table: gpu-opp-table {
+		compatible = "operating-points-v2";
+
+		opp-200000000 {
+			opp-hz = /bits/ 64 <200000000>;
+			opp-microvolt = <1050000>;
+		};
+		opp-300000000 {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <1050000>;
+		};
+		opp-400000000 {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-microvolt = <1050000>;
+		};
+		opp-500000000 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <1100000>;
+		};
+		opp-600000000 {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-microvolt = <1150000>;
+		};
 	};
 
 	h265e_mmu: iommu@ff330200 {
@@ -645,9 +697,11 @@
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru PCLK_HDMI>,
-			 <&cru SCLK_HDMI_SFC>;
+			 <&cru SCLK_HDMI_SFC>,
+			 <&cru SCLK_RTC32K>;
 		clock-names = "iahb",
-			      "isfr";
+			      "isfr",
+			      "cec";
 		phys = <&hdmiphy>;
 		phy-names = "hdmi";
 		pinctrl-names = "default";
@@ -698,8 +752,7 @@
 			<&cru SCLK_RTC32K>, <&cru SCLK_UART0>,
 			<&cru SCLK_UART1>, <&cru SCLK_UART2>,
 			<&cru ACLK_BUS_PRE>, <&cru ACLK_PERI_PRE>,
-			<&cru ACLK_VIO_PRE>, <&cru ACLK_RGA_PRE>,
-			<&cru ACLK_VOP_PRE>, <&cru ACLK_RKVDEC_PRE>,
+			<&cru ACLK_RGA_PRE>, <&cru ACLK_RKVDEC_PRE>,
 			<&cru ACLK_RKVENC>, <&cru ACLK_VPU_PRE>,
 			<&cru SCLK_VDEC_CABAC>, <&cru SCLK_VDEC_CORE>,
 			<&cru SCLK_VENC_CORE>, <&cru SCLK_VENC_DSP>,
@@ -709,7 +762,16 @@
 			<&cru ACLK_BUS_PRE>, <&cru HCLK_BUS_PRE>,
 			<&cru PCLK_BUS_PRE>, <&cru ACLK_PERI_PRE>,
 			<&cru HCLK_PERI>, <&cru PCLK_PERI>,
-			<&cru SCLK_RTC32K>;
+			<&cru ACLK_VIO_PRE>, <&cru HCLK_VIO_PRE>,
+			<&cru ACLK_RGA_PRE>, <&cru SCLK_RGA>,
+			<&cru ACLK_VOP_PRE>, <&cru ACLK_RKVDEC_PRE>,
+			<&cru ACLK_RKVENC>, <&cru ACLK_VPU_PRE>,
+			<&cru SCLK_VDEC_CABAC>, <&cru SCLK_VDEC_CORE>,
+			<&cru SCLK_VENC_CORE>, <&cru SCLK_VENC_DSP>,
+			<&cru SCLK_EFUSE>, <&cru PCLK_DDR>,
+			<&cru ACLK_GMAC>, <&cru PCLK_GMAC>,
+			<&cru ACLK_GPU>,
+			<&cru SCLK_RTC32K>, <&cru SCLK_USB3OTG_SUSPEND>;
 		assigned-clock-parents =
 			<&cru HDMIPHY>, <&cru PLL_APLL>,
 			<&cru PLL_GPLL>, <&xin24m>,
@@ -720,7 +782,6 @@
 			<24000000>, <24000000>,
 			<15000000>, <15000000>,
 			<100000000>, <100000000>,
-			<100000000>, <100000000>,
 			<50000000>, <100000000>,
 			<100000000>, <100000000>,
 			<50000000>, <50000000>,
@@ -730,7 +791,16 @@
 			<150000000>, <75000000>,
 			<75000000>, <150000000>,
 			<75000000>, <75000000>,
-			<32768>;
+			<300000000>, <100000000>,
+			<300000000>, <200000000>,
+			<400000000>, <500000000>,
+			<200000000>, <300000000>,
+			<300000000>, <250000000>,
+			<200000000>, <100000000>,
+			<24000000>, <100000000>,
+			<150000000>, <50000000>,
+			<200000000>,
+			<32768>, <32768>;
 	};
 
 	usb2phy_grf: syscon@ff450000 {
