@@ -73,6 +73,19 @@
 		};
 	};
 
+	hdmi-sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,mclk-fs = <128>;
+		simple-audio-card,name = "HDMI";
+		simple-audio-card,cpu {
+			sound-dai = <&i2s0>;
+		};
+		simple-audio-card,codec {
+			sound-dai = <&hdmi>;
+		};
+	};
+
 	sound {
 		compatible = "audio-graph-card";
 		label = "rockchip,rk3328";
@@ -264,6 +277,10 @@
 			};
 		};
 	};
+};
+
+&i2s0 {
+	status = "okay";
 };
 
 &i2s1 {
