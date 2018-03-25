@@ -142,6 +142,10 @@
 	status = "okay";
 };
 
+&gpu {
+	mali-supply = <&vdd_logic>;
+};
+
 &hdmi {
 	#sound-dai-cells = <0>;
 	status = "okay";
@@ -312,6 +316,8 @@
 };
 
 &tsadc {
+	rockchip,hw-tshut-mode = <0>;
+	rockchip,hw-tshut-polarity = <0>;
 	status = "okay";
 };
 
