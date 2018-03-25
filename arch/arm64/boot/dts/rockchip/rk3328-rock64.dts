@@ -68,6 +68,7 @@
 	ir-receiver {
 		compatible = "gpio-ir-receiver";
 		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
+		linux,rc-map-name = "rc-pine64";
 		pinctrl-0 = <&ir_int>;
 		pinctrl-names = "default";
 	};
@@ -134,6 +135,7 @@
 	assigned-clocks = <&cru SCLK_MAC2IO>, <&cru SCLK_MAC2IO_EXT>;
 	assigned-clock-parents = <&gmac_clkin>, <&gmac_clkin>;
 	clock_in_out = "input";
+	max-speed = <100>;
 	phy-supply = <&vcc_io>;
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
@@ -145,6 +147,10 @@
 	tx_delay = <0x24>;
 	rx_delay = <0x18>;
 	status = "okay";
+};
+
+&gpu {
+	mali-supply = <&vdd_logic>;
 };
 
 &hdmi {
@@ -269,6 +275,21 @@
 
 &i2s0 {
 	#sound-dai-cells = <0>;
+	status = "okay";
+};
+
+&i2s1 {
+	#sound-dai-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2s1_mclk
+		     &i2s1_sclk
+		     &i2s1_lrcktx
+		     &i2s1_lrckrx
+		     &i2s1_sdo
+		     &i2s1_sdi
+		     &i2s1_sdio1
+		     &i2s1_sdio2
+		     &i2s1_sdio3>;
 	status = "okay";
 };
 
