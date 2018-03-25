@@ -676,15 +676,14 @@
 	};
 
 	vpu: video-codec@ff350000 {
-		compatible = "rockchip,rk3328-vpu", "rockchip,vpu_service";
+		compatible = "rockchip,rk3328-vpu";
 		reg = <0x0 0xff350000 0x0 0x800>;
 		interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "irq_dec";
+		interrupt-names = "vdpu";
 		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
-		clock-names = "aclk_vcodec", "hclk_vcodec";
+		clock-names = "aclk", "hclk";
 		resets = <&cru SRST_VCODEC_A>, <&cru SRST_VCODEC_H>;
 		reset-names = "video_a", "video_h";
-		rockchip,grf = <&grf>;
 		power-domains = <&power RK3328_PD_VPU>;
 		iommus = <&vpu_mmu>;
 		status = "disabled";
@@ -703,20 +702,17 @@
 	};
 
 	rkvdec: video-codec@ff36000 {
-		compatible = "rockchip,rk3328-rkvdec", "rockchip,rkvdec";
+		compatible = "rockchip,rk3328-rkvdec";
 		reg = <0x0 0xff360000 0x0 0x400>;
 		interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "irq_dec";
+		interrupt-names = "vdpu";
 		clocks = <&cru ACLK_RKVDEC>, <&cru HCLK_RKVDEC>,
 			<&cru SCLK_VDEC_CABAC>, <&cru SCLK_VDEC_CORE>;
-		clock-names = "aclk_vcodec", "hclk_vcodec", "clk_cabac",
-			"clk_core";
+		clock-names = "aclk", "hclk", "sclk_cabac", "sclk_core";
 		resets = <&cru SRST_VDEC_A>, <&cru SRST_VDEC_H>,
-			<&cru SRST_VDEC_NIU_A>, <&cru SRST_VDEC_NIU_H>,
 			<&cru SRST_VDEC_CABAC>, <&cru SRST_VDEC_CORE>;
-		reset-names = "video_a", "video_h", "niu_a", "niu_h",
+		reset-names = "video_a", "video_h",
 			"video_cabac", "video_core";
-		rockchip,grf = <&grf>;
 		power-domains = <&power RK3328_PD_VIDEO>;
 		iommus = <&rkvdec_mmu>;
 		status = "disabled";
