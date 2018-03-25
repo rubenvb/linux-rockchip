@@ -50,6 +50,20 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		standby {
+			gpios = <&rk805 0 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "heartbeat";
+		};
+
+		power {
+			gpios = <&rk805 1 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "mmc0";
+		};
+	};
 };
 
 &cpu0 {
@@ -115,6 +129,8 @@
 		interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
 		#clock-cells = <1>;
 		clock-output-names = "xin32k", "rk805-clkout2";
+		gpio-controller;
+		#gpio-cells = <2>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pmic_int_l>;
 		rockchip,system-power-controller;
