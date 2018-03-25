@@ -323,6 +323,20 @@
 	status = "okay";
 };
 
+&spi0 {
+	status = "okay";
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0>;
+		m25p,fast-read;
+		/* The max SCLK of the flash 104/80 MHZ  */
+		spi-max-frequency = <50000000>;
+	};
+};
+
 &tsadc {
 	rockchip,hw-tshut-mode = <0>;
 	rockchip,hw-tshut-polarity = <0>;
