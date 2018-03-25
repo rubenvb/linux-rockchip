@@ -71,6 +71,19 @@
 		pinctrl-0 = <&ir_int>;
 		pinctrl-names = "default";
 	};
+
+	hdmi-sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,mclk-fs = <128>;
+		simple-audio-card,name = "HDMI";
+		simple-audio-card,cpu {
+			sound-dai = <&i2s0>;
+		};
+		simple-audio-card,codec {
+			sound-dai = <&hdmi>;
+		};
+	};
 };
 
 &cpu0 {
@@ -119,6 +132,7 @@
 };
 
 &hdmi {
+	#sound-dai-cells = <0>;
 	status = "okay";
 };
 
@@ -235,6 +249,11 @@
 			};
 		};
 	};
+};
+
+&i2s0 {
+	#sound-dai-cells = <0>;
+	status = "okay";
 };
 
 &io_domains {
