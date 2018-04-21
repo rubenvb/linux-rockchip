@@ -523,6 +523,10 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 	if (hdmi->dev_type == RK3328_HDMI && mode->clock > 340000)
 		return MODE_CLOCK_RANGE;
 
+	/* Skip 4K 50/60Hz clocks for RK3399 */
+	if (hdmi->dev_type == RK3399_HDMI && mode->clock > 340000)
+		return MODE_CLOCK_RANGE;
+
 	/*
 	 * ensure all drm display mode can work, if someone want support more
 	 * resolutions, please limit the possible_crtc, only connect to
