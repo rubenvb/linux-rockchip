@@ -1014,6 +1014,10 @@
 	status = "okay";
 };
 
+&rkvdec_srv {
+	status = "okay";
+};
+
 &rockchip_suspend {
 	status = "okay";
 	rockchip,sleep-debug-en = <0>;
@@ -1047,7 +1051,15 @@
 	status = "okay";
 };
 
-&vpu {
+&vdpu {
+	status = "okay";
+};
+
+&vepu {
+	status = "okay";
+};
+
+&vpu_service {
 	status = "okay";
 };
 
