@@ -1732,6 +1732,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	s = to_rockchip_crtc_state(crtc->state);
 
 	spin_lock(&vop->reg_lock);
+	VOP_WIN_SET(vop, win, yuv_clip, 0);
 	VOP_WIN_SET(vop, win, xmirror, xmirror);
 	VOP_WIN_SET(vop, win, ymirror, ymirror);
 	VOP_WIN_SET(vop, win, format, vop_plane_state->format);
@@ -2548,6 +2549,7 @@ static void vop_update_csc(struct drm_crtc *crtc)
 		VOP_CTRL_SET(vop, dsp_data_swap, 0);
 
 	VOP_CTRL_SET(vop, out_mode, s->output_mode);
+	VOP_CTRL_SET(vop, yuv_clip, 0);
 
 	switch (s->bus_format) {
 	case MEDIA_BUS_FMT_RGB565_1X16:
