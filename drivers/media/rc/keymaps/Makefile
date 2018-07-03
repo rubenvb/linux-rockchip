@@ -102,6 +102,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
 			rc-tt-1500.o \
 			rc-twinhan-dtv-cab-ci.o \
 			rc-twinhan1027.o \
+			rc-trn9.o \
 			rc-wetek-hub.o \
 			rc-wetek-play-2.o \
 			rc-videomate-m1f.o \
