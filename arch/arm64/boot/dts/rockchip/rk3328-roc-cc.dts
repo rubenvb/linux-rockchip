@@ -484,6 +484,10 @@
 	status = "okay";
 };
 
+&rkvdec_srv {
+	status = "okay";
+};
+
 &sdmmc {
 	bus-width = <4>;
 	cap-mmc-highspeed;
@@ -565,6 +569,10 @@
 };
 
 &usbdrd_dwc3 {
+	status = "okay";
+};
+
+&vdpu {
 	status = "okay";
 };
 
