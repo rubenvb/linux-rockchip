@@ -89,6 +89,7 @@ static const struct dw_hdmi_audio_tmds_n common_tmds_n_table[] = {
 	{ .tmds = 71000000, .n_32k = 4096, .n_44k1 = 7056, .n_48k = 6144, },
 	{ .tmds = 72000000, .n_32k = 4096, .n_44k1 = 5635, .n_48k = 6144, },
 	{ .tmds = 73250000, .n_32k = 4096, .n_44k1 = 14112, .n_48k = 6144, },
+	{ .tmds = 74176000, .n_32k = 11648, .n_44k1 = 17836, .n_48k = 11648, },
 	{ .tmds = 74250000, .n_32k = 4096, .n_44k1 = 6272, .n_48k = 6144, },
 	{ .tmds = 75000000, .n_32k = 4096, .n_44k1 = 5880, .n_48k = 6144, },
 	{ .tmds = 78750000, .n_32k = 4096, .n_44k1 = 5600, .n_48k = 6144, },
@@ -105,13 +106,16 @@ static const struct dw_hdmi_audio_tmds_n common_tmds_n_table[] = {
 	{ .tmds = 119000000, .n_32k = 4096, .n_44k1 = 5544, .n_48k = 6144, },
 	{ .tmds = 135000000, .n_32k = 4096, .n_44k1 = 5488, .n_48k = 6144, },
 	{ .tmds = 146250000, .n_32k = 4096, .n_44k1 = 6272, .n_48k = 6144, },
-	{ .tmds = 148500000, .n_32k = 4096, .n_44k1 = 5488, .n_48k = 6144, },
+	{ .tmds = 148352000, .n_32k = 11648, .n_44k1 = 8918, .n_48k = 5824, },
+	{ .tmds = 148500000, .n_32k = 4096, .n_44k1 = 6272, .n_48k = 6144, },
 	{ .tmds = 154000000, .n_32k = 4096, .n_44k1 = 5544, .n_48k = 6144, },
 	{ .tmds = 162000000, .n_32k = 4096, .n_44k1 = 5684, .n_48k = 6144, },
 
 	/* For 297 MHz+ HDMI spec have some other rule for setting N */
-	{ .tmds = 297000000, .n_32k = 3073, .n_44k1 = 4704, .n_48k = 5120, },
-	{ .tmds = 594000000, .n_32k = 3073, .n_44k1 = 9408, .n_48k = 10240, },
+	{ .tmds = 296703000, .n_32k = 5824, .n_44k1 = 4459, .n_48k = 5824, },
+	{ .tmds = 297000000, .n_32k = 3072, .n_44k1 = 4704, .n_48k = 5120, },
+	{ .tmds = 593407000, .n_32k = 5824, .n_44k1 = 8918, .n_48k = 5824, },
+	{ .tmds = 594000000, .n_32k = 3072, .n_44k1 = 9408, .n_48k = 6144, },
 
 	/* End of table */
 	{ .tmds = 0,         .n_32k = 0,    .n_44k1 = 0,    .n_48k = 0, },
@@ -831,6 +835,11 @@ static void hdmi_enable_audio_clk(struct dw_hdmi *hdmi, bool enable)
 	else
 		hdmi->mc_clkdis |= HDMI_MC_CLKDIS_AUDCLK_DISABLE;
 	hdmi_writeb(hdmi, hdmi->mc_clkdis, HDMI_MC_CLKDIS);
+
+	if (enable) {
+		hdmi_set_cts_n(hdmi, 0, 0);
+		hdmi_set_cts_n(hdmi, hdmi->audio_cts, hdmi->audio_n);
+	}
 }
 
 static void dw_hdmi_ahb_audio_enable(struct dw_hdmi *hdmi)

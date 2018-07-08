@@ -110,8 +110,7 @@ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
 			 HDMI_AUD_INT_FIFO_FULL_MSK, HDMI_AUD_INT);
 	hdmi_update_bits(audio, HDMI_AUD_CONF0_SW_RESET,
 			 HDMI_AUD_CONF0_SW_RESET, HDMI_AUD_CONF0);
-	hdmi_update_bits(audio, HDMI_MC_SWRSTZ_I2S_RESET_MSK,
-			 HDMI_MC_SWRSTZ_I2S_RESET_MSK, HDMI_MC_SWRSTZ);
+	hdmi_write(audio, (u8)~HDMI_MC_SWRSTZ_I2S_RESET_MSK, HDMI_MC_SWRSTZ);
 
 	switch (hparms->mode) {
 	case NLPCM:
@@ -193,11 +192,6 @@ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
 	/* Set LFEPBLDOWN-MIX INH and LSV */
 	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF3);
 
-	hdmi_update_bits(audio, HDMI_AUD_CONF0_SW_RESET,
-			 HDMI_AUD_CONF0_SW_RESET, HDMI_AUD_CONF0);
-	hdmi_update_bits(audio, HDMI_MC_SWRSTZ_I2S_RESET_MSK,
-			 HDMI_MC_SWRSTZ_I2S_RESET_MSK, HDMI_MC_SWRSTZ);
-
 	dw_hdmi_audio_enable(hdmi);
 
 	return 0;
@@ -211,6 +205,7 @@ static void dw_hdmi_i2s_audio_shutdown(struct device *dev, void *data)
 	dw_hdmi_audio_disable(hdmi);
 
 	hdmi_write(audio, HDMI_AUD_CONF0_SW_RESET, HDMI_AUD_CONF0);
+	hdmi_write(audio, (u8)~HDMI_MC_SWRSTZ_I2S_RESET_MSK, HDMI_MC_SWRSTZ);
 }
 
 static int dw_hdmi_i2s_get_eld(struct device *dev, void *data, u8 *buf, size_t len)
