@@ -336,16 +336,12 @@ dw_hdmi_rk3328_read_hpd(struct dw_hdmi *dw_hdmi, void *data)
 	if (status == connector_status_connected)
 		regmap_write(hdmi->regmap,
 			RK3328_GRF_SOC_CON4,
-			HIWORD_UPDATE(RK3328_HDMI_CEC_5V | RK3328_HDMI_SDA_5V |
-				      RK3328_HDMI_SCL_5V,
-				      RK3328_HDMI_CEC_5V | RK3328_HDMI_SDA_5V |
-				      RK3328_HDMI_SCL_5V));
+			HIWORD_UPDATE(RK3328_HDMI_SDA_5V | RK3328_HDMI_SCL_5V,
+				      RK3328_HDMI_SDA_5V | RK3328_HDMI_SCL_5V));
 	else
 		regmap_write(hdmi->regmap,
 			RK3328_GRF_SOC_CON4,
-			HIWORD_UPDATE(0,
-				      RK3328_HDMI_CEC_5V | RK3328_HDMI_SDA_5V |
-				      RK3328_HDMI_SCL_5V));
+			HIWORD_UPDATE(0, RK3328_HDMI_SDA_5V | RK3328_HDMI_SCL_5V));
 	return status;
 }
 
