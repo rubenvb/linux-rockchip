@@ -1694,6 +1694,8 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	frame.scan_mode = HDMI_SCAN_MODE_UNDERSCAN;
 
 	if (hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format)) {
+		frame.colorimetry = HDMI_COLORIMETRY_NONE;
+		frame.extended_colorimetry = 0;
 		frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
 		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_FULL;
 	} else {
