@@ -86,9 +86,9 @@
 		};
 	};
 
-	sound {
+	spdif-sound {
 		compatible = "audio-graph-card";
-		label = "rockchip,rk3328";
+		label = "SPDIF";
 		dais = <&spdif_p0>;
 	};
 
