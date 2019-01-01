@@ -31,6 +31,8 @@ struct rockchip_vpu_codec_ops {
 	void (*run)(struct rockchip_vpu_ctx *ctx);
 	void (*done)(struct rockchip_vpu_ctx *ctx, enum vb2_buffer_state);
 	void (*reset)(struct rockchip_vpu_ctx *ctx);
+	void (*start)(struct rockchip_vpu_ctx *ctx);
+	void (*stop)(struct rockchip_vpu_ctx *ctx);
 };
 
 /**
@@ -44,6 +46,7 @@ enum rockchip_vpu_enc_fmt {
 };
 
 extern const struct rockchip_vpu_variant rk3399_vpu_variant;
+extern const struct rockchip_vpu_variant rk3328_vpu_variant;
 extern const struct rockchip_vpu_variant rk3288_vpu_variant;
 
 void rockchip_vpu_watchdog(struct work_struct *work);
@@ -54,5 +57,12 @@ void rockchip_vpu_irq_done(struct rockchip_vpu_dev *vpu,
 
 void rk3288_vpu_jpeg_enc_run(struct rockchip_vpu_ctx *ctx);
 void rk3399_vpu_jpeg_enc_run(struct rockchip_vpu_ctx *ctx);
+
+void rk3288_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx);
+void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx);
+void rockchip_vpu_mpeg2_dec_copy_qtable(u8 *qtable,
+	const struct v4l2_ctrl_mpeg2_quantization *ctrl);
+void rockchip_vpu_mpeg2_dec_start(struct rockchip_vpu_ctx *ctx);
+void rockchip_vpu_mpeg2_dec_stop(struct rockchip_vpu_ctx *ctx);
 
 #endif /* ROCKCHIP_VPU_HW_H_ */
