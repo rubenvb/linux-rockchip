@@ -21,6 +21,7 @@
 #include <linux/of_device.h>
 #include <linux/regmap.h>
 #include <linux/spinlock.h>
+#include <linux/workqueue.h>
 
 #include <drm/drm_of.h>
 #include <drm/drmP.h>
@@ -184,6 +185,7 @@ struct dw_hdmi {
 	void (*update_eld)(struct device *dev, u8 *eld);
 
 	struct cec_notifier *cec_notifier;
+	struct delayed_work cec_work;
 };
 
 #define HDMI_IH_PHY_STAT0_RX_SENSE \
@@ -1926,6 +1928,26 @@ static void dw_hdmi_update_phy_mask(struct dw_hdmi *hdmi)
 					  hdmi->rxsense);
 }
 
+static void dw_hdmi_cec_set_phys_addr_from_edid(struct dw_hdmi *hdmi,
+						struct edid *edid)
+{
+	cancel_delayed_work_sync(&hdmi->cec_work);
+	cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
+}
+
+static void dw_hdmi_cec_set_invalid_phys_addr(struct dw_hdmi *hdmi)
+{
+	mod_delayed_work(system_wq, &hdmi->cec_work, msecs_to_jiffies(1100));
+}
+
+static void dw_hdmi_cec_delayed_work(struct work_struct *work)
+{
+	struct dw_hdmi *hdmi = container_of(to_delayed_work(work),
+					    struct dw_hdmi, cec_work);
+
+	cec_notifier_set_phys_addr(hdmi->cec_notifier, CEC_PHYS_ADDR_INVALID);
+}
+
 static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
 					  bool add_modes)
 {
@@ -1945,7 +1967,7 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
 		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
 		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
 		drm_connector_update_edid_property(connector, edid);
-		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
+		dw_hdmi_cec_set_phys_addr_from_edid(hdmi, edid);
 		if (add_modes)
 			ret = drm_add_edid_modes(connector, edid);
 		else
@@ -1977,7 +1999,7 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	if (status == connector_status_connected)
 		dw_hdmi_connector_update_edid(connector, false);
 	else
-		cec_notifier_set_phys_addr(hdmi->cec_notifier, CEC_PHYS_ADDR_INVALID);
+		dw_hdmi_cec_set_invalid_phys_addr(hdmi);
 
 	return status;
 }
@@ -2502,6 +2524,8 @@ __dw_hdmi_probe(struct platform_device *pdev,
 		ret = -ENOMEM;
 		goto err_iahb;
 	}
+
+	INIT_DELAYED_WORK(&hdmi->cec_work, dw_hdmi_cec_delayed_work);
 
 	/*
 	 * To prevent overflows in HDMI_IH_FC_STAT2, set the clk regenerator
