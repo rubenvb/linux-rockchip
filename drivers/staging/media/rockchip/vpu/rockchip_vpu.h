@@ -63,6 +63,7 @@ struct rockchip_vpu_variant {
 	unsigned int codec;
 	const struct rockchip_vpu_codec_ops *codec_ops;
 	int (*init)(struct rockchip_vpu_dev *vpu);
+	int (*open)(struct rockchip_vpu_dev *vpu);
 	irqreturn_t (*vepu_irq)(int irq, void *priv);
 	irqreturn_t (*vdpu_irq)(int irq, void *priv);
 	const char *clk_names[ROCKCHIP_VPU_MAX_CLOCKS];
@@ -163,6 +164,10 @@ struct rockchip_vpu_ctx {
 	dma_addr_t bounce_dma_addr;
 	void *bounce_buf;
 	size_t bounce_size;
+
+	dma_addr_t dir_mv_dma_addr;
+	void *dir_mv_buf;
+	size_t dir_mv_size;
 
 	dma_addr_t qtable_dma_addr;
 	void *qtable_buf;

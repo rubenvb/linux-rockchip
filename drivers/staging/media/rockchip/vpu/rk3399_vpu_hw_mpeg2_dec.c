@@ -69,6 +69,7 @@ void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 #define VDPU_REG_DEC_OUT_BASE		VDPU_SWREG(63)
 #define VDPU_REG_RLC_VLC_BASE		VDPU_SWREG(64)
 #define VDPU_REG_QTABLE_BASE		VDPU_SWREG(61)
+#define VDPU_REG_DIR_MV_BASE		VDPU_SWREG(62)
 #define VDPU_REG_REFER0_BASE		VDPU_SWREG(131)
 #define VDPU_REG_REFER2_BASE		VDPU_SWREG(134)
 #define VDPU_REG_REFER3_BASE		VDPU_SWREG(135)
@@ -145,12 +146,12 @@ void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 #define VDPU_REG_DEC_CLK_GATE_E(v)	((v) ? BIT(4) : 0)
 
 	reg = VDPU_REG_RLC_MODE_E(0) |
-	      VDPU_REG_PIC_INTERLACE_E(!sequence->progressive_sequence) |
+	      VDPU_REG_PIC_INTERLACE_E(1) |
 	      VDPU_REG_PIC_FIELDMODE_E(picture->picture_structure != PICT_FRAME) |
 	      VDPU_REG_PIC_B_E(picture->picture_coding_type == V4L2_MPEG2_PICTURE_CODING_TYPE_B) |
 	      VDPU_REG_PIC_INTER_E(picture->picture_coding_type != V4L2_MPEG2_PICTURE_CODING_TYPE_I) |
 	      VDPU_REG_PIC_TOPFIELD_E(picture->picture_structure == PICT_TOP_FIELD) |
-	      VDPU_REG_FWD_INTERLACE_E(0) |
+	      VDPU_REG_FWD_INTERLACE_E(1) |
 	      VDPU_REG_WRITE_MVS_E(0) |
 	      VDPU_REG_DEC_TIMEOUT_E(1) |
 	      VDPU_REG_DEC_CLK_GATE_E(1);
@@ -199,6 +200,8 @@ void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 	      VDPU_REG_MV_ACCURACY_BWD(1);
 	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(136));
 
+	//vdpu_write_relaxed(vpu, ctx->dir_mv_dma_addr, VDPU_REG_DIR_MV_BASE);
+
 	rockchip_vpu_mpeg2_dec_copy_qtable(ctx->qtable_buf, quantization);
 	vdpu_write_relaxed(vpu, ctx->qtable_dma_addr, VDPU_REG_QTABLE_BASE);
 
@@ -210,8 +213,8 @@ void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 	addr = vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0);
 	current_addr = forward_addr = backward_addr = addr;
 
-	if (picture->picture_structure == PICT_BOTTOM_FIELD)
-		addr += DIV_ROUND_UP(sequence->horizontal_size, 16) << 4;
+	//if (picture->picture_structure == PICT_BOTTOM_FIELD)
+	//	addr += DIV_ROUND_UP(sequence->horizontal_size, 16) << 4;
 	vdpu_write_relaxed(vpu, addr, VDPU_REG_DEC_OUT_BASE);
 
 	switch (picture->picture_coding_type) {

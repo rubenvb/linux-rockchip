@@ -106,6 +106,9 @@ static irqreturn_t rk3288_vdpu_irq(int irq, void *dev_id)
 	vdpu_write(vpu, 0, VDPU_REG_INTERRUPT);
 	vdpu_write(vpu, 0, VDPU_REG_CONFIG);
 
+	if (state == VB2_BUF_STATE_ERROR)
+		vdpu_write(vpu, 1, VDPU_REG_SOFT_RESET);
+
 	rockchip_vpu_irq_done(vpu, 0, state);
 
 	return IRQ_HANDLED;
@@ -115,6 +118,13 @@ static int rk3288_vpu_hw_init(struct rockchip_vpu_dev *vpu)
 {
 	/* Bump ACLK to max. possible freq. to improve performance. */
 	clk_set_rate(vpu->clocks[0].clk, RK3288_ACLK_MAX_FREQ);
+	return 0;
+}
+
+static int rk3288_vpu_hw_open(struct rockchip_vpu_dev *vpu)
+{
+	vdpu_write(vpu, 0, VDPU_REG_CONFIG);
+	vdpu_write(vpu, 1, VDPU_REG_SOFT_RESET);
 	return 0;
 }
 
@@ -133,6 +143,7 @@ static void rk3288_vpu_dec_reset(struct rockchip_vpu_ctx *ctx)
 
 	vdpu_write(vpu, VDPU_REG_INTERRUPT_DEC_IRQ_DIS, VDPU_REG_INTERRUPT);
 	vdpu_write(vpu, 0, VDPU_REG_CONFIG);
+	vdpu_write(vpu, 1, VDPU_REG_SOFT_RESET);
 }
 
 /*
@@ -157,17 +168,18 @@ static const struct rockchip_vpu_codec_ops rk3288_vpu_codec_ops[] = {
  */
 
 const struct rockchip_vpu_variant rk3288_vpu_variant = {
-	.enc_offset = 0x0,
+	//.enc_offset = 0x0,
 	.dec_offset = 0x400,
-	.enc_fmts = rk3288_vpu_enc_fmts,
-	.num_enc_fmts = ARRAY_SIZE(rk3288_vpu_enc_fmts),
+	//.enc_fmts = rk3288_vpu_enc_fmts,
+	//.num_enc_fmts = ARRAY_SIZE(rk3288_vpu_enc_fmts),
 	.dec_fmts = rk3288_vpu_dec_fmts,
 	.num_dec_fmts = ARRAY_SIZE(rk3288_vpu_dec_fmts),
 	.codec_ops = rk3288_vpu_codec_ops,
 	.codec = RK_VPU_CODEC_JPEG,
-	.vepu_irq = rk3288_vepu_irq,
+	//.vepu_irq = rk3288_vepu_irq,
 	.vdpu_irq = rk3288_vdpu_irq,
 	.init = rk3288_vpu_hw_init,
+	.open = rk3288_vpu_hw_open,
 	.clk_names = {"aclk", "hclk"},
 	.num_clocks = 2
 };

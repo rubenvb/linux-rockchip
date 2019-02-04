@@ -120,7 +120,7 @@ void rk3288_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 
 	reg = VDPU_REG_DEC_MODE(5) |
 	      VDPU_REG_RLC_MODE_E(0) |
-	      VDPU_REG_PIC_INTERLACE_E(1 - sequence->progressive_sequence) |
+	      VDPU_REG_PIC_INTERLACE_E(!sequence->progressive_sequence) |
 	      VDPU_REG_PIC_FIELDMODE_E(picture->picture_structure != PICT_FRAME) |
 	      VDPU_REG_PIC_B_E(picture->picture_coding_type == V4L2_MPEG2_PICTURE_CODING_TYPE_B) |
 	      VDPU_REG_PIC_INTER_E(picture->picture_coding_type != V4L2_MPEG2_PICTURE_CODING_TYPE_I) |
