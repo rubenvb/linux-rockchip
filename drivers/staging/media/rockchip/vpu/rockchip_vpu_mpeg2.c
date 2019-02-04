@@ -39,6 +39,11 @@ void rockchip_vpu_mpeg2_dec_start(struct rockchip_vpu_ctx *ctx)
 {
 	struct rockchip_vpu_dev *vpu = ctx->dev;
 
+	ctx->dir_mv_size = 8160 * 4 * 4 * 4 * 4;
+	ctx->dir_mv_buf =
+		dma_zalloc_coherent(vpu->dev, ctx->dir_mv_size,
+				    &ctx->dir_mv_dma_addr, GFP_KERNEL);
+
 	ctx->qtable_size = 64 * 4;
 	ctx->qtable_buf =
 		dma_zalloc_coherent(vpu->dev, ctx->qtable_size,
@@ -48,6 +53,10 @@ void rockchip_vpu_mpeg2_dec_start(struct rockchip_vpu_ctx *ctx)
 void rockchip_vpu_mpeg2_dec_stop(struct rockchip_vpu_ctx *ctx)
 {
 	struct rockchip_vpu_dev *vpu = ctx->dev;
+
+	dma_free_coherent(vpu->dev, ctx->dir_mv_size,
+			  ctx->dir_mv_buf,
+			  ctx->dir_mv_dma_addr);
 
 	dma_free_coherent(vpu->dev, ctx->qtable_size,
 			  ctx->qtable_buf,

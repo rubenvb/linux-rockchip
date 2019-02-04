@@ -20,7 +20,7 @@
 #define CEC_NUM_DEVICES	256
 #define CEC_NAME	"cec"
 
-int cec_debug;
+int cec_debug = 1;
 module_param_named(debug, cec_debug, int, 0644);
 MODULE_PARM_DESC(debug, "debug level (0-2)");
 

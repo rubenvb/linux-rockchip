@@ -339,6 +339,9 @@ static int rockchip_vpu_open(struct file *filp)
 	}
 	ctx->fh.ctrl_handler = &ctx->ctrl_handler;
 
+	if (vpu->variant->open)
+		vpu->variant->open(vpu);
+
 	return 0;
 
 err_fh_free:
