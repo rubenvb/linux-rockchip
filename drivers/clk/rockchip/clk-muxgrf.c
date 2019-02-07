@@ -82,7 +82,7 @@ struct clk *rockchip_clk_register_muxgrf(const char *name,
 		return ERR_PTR(-ENOMEM);
 
 	init.name = name;
-	init.flags = flags;
+	init.flags = flags | CLK_IS_BASIC;
 	init.num_parents = num_parents;
 	init.parent_names = parent_names;
 	init.ops = &rockchip_muxgrf_clk_ops;
