@@ -786,18 +786,18 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
 	vpu->mdev.ops = &rockchip_m2m_media_ops;
 	vpu->v4l2_dev.mdev = &vpu->mdev;
 
-	if (vpu->variant->enc_fmts) {
-		ret = rockchip_vpu_video_device_register(vpu, RK_VPU_ENCODER);
-		if (ret) {
-			dev_err(&pdev->dev, "Failed to register encoder\n");
-			goto err_m2m_enc_rel;
-		}
-	}
-
 	if (vpu->variant->dec_fmts) {
 		ret = rockchip_vpu_video_device_register(vpu, RK_VPU_DECODER);
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to register decoder\n");
+			goto err_m2m_rel;
+		}
+	}
+
+	if (vpu->variant->enc_fmts) {
+		ret = rockchip_vpu_video_device_register(vpu, RK_VPU_ENCODER);
+		if (ret) {
+			dev_err(&pdev->dev, "Failed to register encoder\n");
 			goto err_video_dev_unreg;
 		}
 	}
@@ -828,7 +828,7 @@ err_video_dev_unreg:
 		video_unregister_device(vpu->vfd_enc);
 		video_device_release(vpu->vfd_enc);
 	}
-err_m2m_enc_rel:
+err_m2m_rel:
 	v4l2_m2m_release(vpu->m2m_dev);
 err_v4l2_unreg:
 	v4l2_device_unregister(&vpu->v4l2_dev);
