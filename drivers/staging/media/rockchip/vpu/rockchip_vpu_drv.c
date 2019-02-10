@@ -68,7 +68,6 @@ static void rockchip_vpu_job_finish(struct rockchip_vpu_dev *vpu,
 
 	pm_runtime_mark_last_busy(vpu->dev);
 	pm_runtime_put_autosuspend(vpu->dev);
-	clk_bulk_disable(vpu->variant->num_clocks, vpu->clocks);
 
 	src = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	dst = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
@@ -149,9 +148,6 @@ static void device_run(void *priv)
 	struct rockchip_vpu_ctx *ctx = priv;
 	int ret;
 
-	ret = clk_bulk_enable(ctx->dev->variant->num_clocks, ctx->dev->clocks);
-	if (ret)
-		goto err_cancel_job;
 	ret = pm_runtime_get_sync(ctx->dev->dev);
 	if (ret < 0)
 		goto err_cancel_job;
@@ -757,15 +753,7 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = vpu->variant->init(vpu);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to init VPU hardware\n");
-		return ret;
-	}
-
-	pm_runtime_set_autosuspend_delay(vpu->dev, 100);
-	pm_runtime_use_autosuspend(vpu->dev);
-	pm_runtime_enable(vpu->dev);
+	platform_set_drvdata(pdev, vpu);
 
 	ret = clk_bulk_prepare(vpu->variant->num_clocks, vpu->clocks);
 	if (ret) {
@@ -773,12 +761,21 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	pm_runtime_set_autosuspend_delay(vpu->dev, 100);
+	pm_runtime_use_autosuspend(vpu->dev);
+	pm_runtime_enable(vpu->dev);
+
+	ret = vpu->variant->init(vpu);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to init VPU hardware\n");
+		goto err_clk_unprepare;
+	}
+
 	ret = v4l2_device_register(&pdev->dev, &vpu->v4l2_dev);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register v4l2 device\n");
 		goto err_clk_unprepare;
 	}
-	platform_set_drvdata(pdev, vpu);
 
 	vpu->m2m_dev = v4l2_m2m_init(&vpu_m2m_ops);
 	if (IS_ERR(vpu->m2m_dev)) {
@@ -842,8 +839,9 @@ err_m2m_enc_rel:
 err_v4l2_unreg:
 	v4l2_device_unregister(&vpu->v4l2_dev);
 err_clk_unprepare:
-	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
+	pm_runtime_dont_use_autosuspend(vpu->dev);
 	pm_runtime_disable(vpu->dev);
+	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
 	return ret;
 }
 
@@ -867,14 +865,38 @@ static int rockchip_vpu_remove(struct platform_device *pdev)
 		video_device_release(vpu->vfd_dec);
 	}
 	v4l2_device_unregister(&vpu->v4l2_dev);
-	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
+	pm_runtime_dont_use_autosuspend(vpu->dev);
 	pm_runtime_disable(vpu->dev);
+	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
+	return 0;
+}
+
+static int rockchip_vpu_runtime_resume(struct device *dev)
+{
+	struct rockchip_vpu_dev *vpu = dev_get_drvdata(dev);
+
+	if (vpu && vpu->variant->resume)
+		return vpu->variant->resume(vpu);
+
+	return 0;
+}
+
+static int rockchip_vpu_runtime_suspend(struct device *dev)
+{
+	struct rockchip_vpu_dev *vpu = dev_get_drvdata(dev);
+
+	if (vpu && vpu->variant->suspend)
+		return vpu->variant->suspend(vpu);
+
 	return 0;
 }
 
 static const struct dev_pm_ops rockchip_vpu_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
 				pm_runtime_force_resume)
+	SET_RUNTIME_PM_OPS(rockchip_vpu_runtime_suspend,
+			   rockchip_vpu_runtime_resume,
+			   NULL)
 };
 
 static struct platform_driver rockchip_vpu_driver = {
