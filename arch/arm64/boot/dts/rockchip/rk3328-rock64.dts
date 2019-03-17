@@ -89,7 +89,6 @@
 		compatible = "audio-graph-card";
 		label = "rockchip,rk3328";
 		dais = <&i2s0_p0
-			&i2s1_p0
 			&spdif_p0>;
 	};
 
