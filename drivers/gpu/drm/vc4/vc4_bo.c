@@ -452,14 +452,14 @@ struct vc4_bo *vc4_bo_create(struct drm_device *dev, size_t unaligned_size,
 		return bo;
 	}
 
-	cma_obj = drm_gem_cma_create(dev, size);
+	cma_obj = drm_gem_cma_create(dev, size, 0);
 	if (IS_ERR(cma_obj)) {
 		/*
 		 * If we've run out of CMA memory, kill the cache of
 		 * CMA allocations we've got laying around and try again.
 		 */
 		vc4_bo_cache_purge(dev);
-		cma_obj = drm_gem_cma_create(dev, size);
+		cma_obj = drm_gem_cma_create(dev, size, 0);
 	}
 
 	if (IS_ERR(cma_obj)) {
@@ -475,7 +475,7 @@ struct vc4_bo *vc4_bo_create(struct drm_device *dev, size_t unaligned_size,
 		 * size.
 		 */
 		vc4_bo_userspace_cache_purge(dev);
-		cma_obj = drm_gem_cma_create(dev, size);
+		cma_obj = drm_gem_cma_create(dev, size, 0);
 	}
 
 	if (IS_ERR(cma_obj)) {

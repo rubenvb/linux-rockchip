@@ -13,6 +13,7 @@
  *       more than one entry but they are guaranteed to have contiguous
  *       DMA addresses.
  * @vaddr: kernel virtual address of the backing memory
+ * @coherent: coherent backing memory
  */
 struct drm_gem_cma_object {
 	struct drm_gem_object base;
@@ -21,6 +22,7 @@ struct drm_gem_cma_object {
 
 	/* For objects with DMA memory allocated by GEM CMA */
 	void *vaddr;
+	bool coherent;
 };
 
 #define to_drm_gem_cma_obj(gem_obj) \
@@ -78,7 +80,7 @@ int drm_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma);
 
 /* allocate physical memory */
 struct drm_gem_cma_object *drm_gem_cma_create(struct drm_device *drm,
-					      size_t size);
+					      size_t size, bool coherent);
 
 extern const struct vm_operations_struct drm_gem_cma_vm_ops;
 

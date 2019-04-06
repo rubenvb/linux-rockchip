@@ -714,6 +714,8 @@ struct drm_gem_object *drm_gem_prime_import_dev(struct drm_device *dev,
 	struct drm_gem_object *obj;
 	int ret;
 
+	DRM_INFO("drm_gem_prime_import_dev\n");
+
 	if (dma_buf->ops == &drm_gem_prime_dmabuf_ops) {
 		obj = dma_buf->priv;
 		if (obj->dev == dev) {
@@ -726,22 +728,27 @@ struct drm_gem_object *drm_gem_prime_import_dev(struct drm_device *dev,
 		}
 	}
 
+	DRM_INFO("gem_prime_import_sg_table=%p\n", dev->driver->gem_prime_import_sg_table);
+
 	if (!dev->driver->gem_prime_import_sg_table)
 		return ERR_PTR(-EINVAL);
 
 	attach = dma_buf_attach(dma_buf, attach_dev);
+	DRM_INFO("attach=%d\n", !IS_ERR(attach));
 	if (IS_ERR(attach))
 		return ERR_CAST(attach);
 
 	get_dma_buf(dma_buf);
 
 	sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	DRM_INFO("sgt=%d\n", !IS_ERR(sgt));
 	if (IS_ERR(sgt)) {
 		ret = PTR_ERR(sgt);
 		goto fail_detach;
 	}
 
 	obj = dev->driver->gem_prime_import_sg_table(dev, attach, sgt);
+	DRM_INFO("obj=%d\n", !IS_ERR(obj));
 	if (IS_ERR(obj)) {
 		ret = PTR_ERR(obj);
 		goto fail_unmap;
@@ -796,7 +803,10 @@ int drm_gem_prime_fd_to_handle(struct drm_device *dev,
 	struct drm_gem_object *obj;
 	int ret;
 
+	DRM_INFO("prime_fd=%d\n", prime_fd);
+
 	dma_buf = dma_buf_get(prime_fd);
+	DRM_INFO("dma_buf_get dma_buf=%d\n", !IS_ERR(dma_buf));
 	if (IS_ERR(dma_buf))
 		return PTR_ERR(dma_buf);
 
@@ -804,6 +814,7 @@ int drm_gem_prime_fd_to_handle(struct drm_device *dev,
 
 	ret = drm_prime_lookup_buf_handle(&file_priv->prime,
 			dma_buf, handle);
+	DRM_INFO("drm_prime_lookup_buf_handle ret=%d\n", ret);
 	if (ret == 0)
 		goto out_put;
 
@@ -813,6 +824,7 @@ int drm_gem_prime_fd_to_handle(struct drm_device *dev,
 		obj = dev->driver->gem_prime_import(dev, dma_buf);
 	else
 		obj = drm_gem_prime_import(dev, dma_buf);
+	DRM_INFO("gem_prime_import obj=%d\n", !IS_ERR(obj));
 	if (IS_ERR(obj)) {
 		ret = PTR_ERR(obj);
 		goto out_unlock;
@@ -828,12 +840,14 @@ int drm_gem_prime_fd_to_handle(struct drm_device *dev,
 	/* _handle_create_tail unconditionally unlocks dev->object_name_lock. */
 	ret = drm_gem_handle_create_tail(file_priv, obj, handle);
 	drm_gem_object_put_unlocked(obj);
+	DRM_INFO("drm_gem_handle_create_tail ret=%d\n", ret);
 	if (ret)
 		goto out_put;
 
 	ret = drm_prime_add_buf_handle(&file_priv->prime,
 			dma_buf, *handle);
 	mutex_unlock(&file_priv->prime.lock);
+	DRM_INFO("drm_prime_add_buf_handle ret=%d\n", ret);
 	if (ret)
 		goto fail;
 

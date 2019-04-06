@@ -712,6 +712,9 @@ struct drm_mode_create_dumb {
 	__u64 size;
 };
 
+#define DRM_MODE_CREATE_DUMB_CACHABLE 0x01
+#define DRM_MODE_CREATE_DUMB_FLAGS (DRM_MODE_CREATE_DUMB_CACHABLE)
+
 /* set up for mmap of a dumb scanout buffer */
 struct drm_mode_map_dumb {
 	/** Handle for the object being mapped. */

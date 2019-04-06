@@ -98,7 +98,7 @@ error:
  * error code on failure.
  */
 struct drm_gem_cma_object *drm_gem_cma_create(struct drm_device *drm,
-					      size_t size)
+					      size_t size, bool coherent)
 {
 	struct drm_gem_cma_object *cma_obj;
 	int ret;
@@ -109,8 +109,14 @@ struct drm_gem_cma_object *drm_gem_cma_create(struct drm_device *drm,
 	if (IS_ERR(cma_obj))
 		return cma_obj;
 
-	cma_obj->vaddr = dma_alloc_wc(drm->dev, size, &cma_obj->paddr,
-				      GFP_KERNEL | __GFP_NOWARN);
+	cma_obj->coherent = coherent;
+	if (cma_obj->coherent)
+		cma_obj->vaddr = dma_alloc_coherent(drm->dev, size,
+						    &cma_obj->paddr,
+						    GFP_KERNEL | __GFP_NOWARN);
+	else
+		cma_obj->vaddr = dma_alloc_wc(drm->dev, size, &cma_obj->paddr,
+					      GFP_KERNEL | __GFP_NOWARN);
 	if (!cma_obj->vaddr) {
 		dev_dbg(drm->dev, "failed to allocate buffer with size %zu\n",
 			size);
@@ -145,13 +151,19 @@ EXPORT_SYMBOL_GPL(drm_gem_cma_create);
 static struct drm_gem_cma_object *
 drm_gem_cma_create_with_handle(struct drm_file *file_priv,
 			       struct drm_device *drm, size_t size,
-			       uint32_t *handle)
+			       uint32_t *handle, uint32_t flags)
 {
 	struct drm_gem_cma_object *cma_obj;
 	struct drm_gem_object *gem_obj;
 	int ret;
+	bool coherent = 0;
 
-	cma_obj = drm_gem_cma_create(drm, size);
+	if (flags & DRM_MODE_CREATE_DUMB_CACHABLE)
+		coherent = 1;
+
+	DRM_INFO("flags=%d coherent=%d\n", flags, coherent);
+
+	cma_obj = drm_gem_cma_create(drm, size, coherent);
 	if (IS_ERR(cma_obj))
 		return cma_obj;
 
@@ -187,8 +199,12 @@ void drm_gem_cma_free_object(struct drm_gem_object *gem_obj)
 	cma_obj = to_drm_gem_cma_obj(gem_obj);
 
 	if (cma_obj->vaddr) {
-		dma_free_wc(gem_obj->dev->dev, cma_obj->base.size,
-			    cma_obj->vaddr, cma_obj->paddr);
+		if (cma_obj->coherent)
+			dma_free_coherent(gem_obj->dev->dev, cma_obj->base.size,
+					  cma_obj->vaddr, cma_obj->paddr);
+		else
+			dma_free_wc(gem_obj->dev->dev, cma_obj->base.size,
+				    cma_obj->vaddr, cma_obj->paddr);
 	} else if (gem_obj->import_attach) {
 		if (cma_obj->vaddr)
 			dma_buf_vunmap(gem_obj->import_attach->dmabuf, cma_obj->vaddr);
@@ -229,7 +245,7 @@ int drm_gem_cma_dumb_create_internal(struct drm_file *file_priv,
 		args->size = args->pitch * args->height;
 
 	cma_obj = drm_gem_cma_create_with_handle(file_priv, drm, args->size,
-						 &args->handle);
+						 &args->handle, args->flags);
 	return PTR_ERR_OR_ZERO(cma_obj);
 }
 EXPORT_SYMBOL_GPL(drm_gem_cma_dumb_create_internal);
@@ -262,7 +278,7 @@ int drm_gem_cma_dumb_create(struct drm_file *file_priv,
 	args->size = args->pitch * args->height;
 
 	cma_obj = drm_gem_cma_create_with_handle(file_priv, drm, args->size,
-						 &args->handle);
+						 &args->handle, args->flags);
 	return PTR_ERR_OR_ZERO(cma_obj);
 }
 EXPORT_SYMBOL_GPL(drm_gem_cma_dumb_create);
@@ -286,8 +302,14 @@ static int drm_gem_cma_mmap_obj(struct drm_gem_cma_object *cma_obj,
 	vma->vm_flags &= ~VM_PFNMAP;
 	vma->vm_pgoff = 0;
 
-	ret = dma_mmap_wc(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
-			  cma_obj->paddr, vma->vm_end - vma->vm_start);
+	if (cma_obj->coherent) {
+		vma->vm_page_prot = pgprot_decrypted(vm_get_page_prot(vma->vm_flags));
+		ret = dma_mmap_coherent(cma_obj->base.dev->dev, vma,
+					cma_obj->vaddr, cma_obj->paddr,
+					vma->vm_end - vma->vm_start);
+	} else
+		ret = dma_mmap_wc(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
+				  cma_obj->paddr, vma->vm_end - vma->vm_start);
 	if (ret)
 		drm_gem_vm_close(vma);
 
@@ -478,6 +500,8 @@ drm_gem_cma_prime_import_sg_table(struct drm_device *dev,
 {
 	struct drm_gem_cma_object *cma_obj;
 
+	DRM_INFO("drm_gem_cma_prime_import_sg_table: nents=%d\n", sgt->nents);
+
 	if (sgt->nents != 1) {
 		/* check if the entries in the sg_table are contiguous */
 		dma_addr_t next_addr = sg_dma_address(sgt->sgl);
@@ -492,8 +516,10 @@ drm_gem_cma_prime_import_sg_table(struct drm_device *dev,
 			if (!sg_dma_len(s))
 				continue;
 
-			if (sg_dma_address(s) != next_addr)
+			if (sg_dma_address(s) != next_addr) {
+				DRM_INFO("sg_dma_address(s) != next_addr\n");
 				return ERR_PTR(-EINVAL);
+			}
 
 			next_addr = sg_dma_address(s) + sg_dma_len(s);
 		}
@@ -501,13 +527,14 @@ drm_gem_cma_prime_import_sg_table(struct drm_device *dev,
 
 	/* Create a CMA GEM buffer. */
 	cma_obj = __drm_gem_cma_create(dev, attach->dmabuf->size);
+	DRM_INFO("__drm_gem_cma_create cma_obj=%d\n", !IS_ERR(cma_obj));
 	if (IS_ERR(cma_obj))
 		return ERR_CAST(cma_obj);
 
 	cma_obj->paddr = sg_dma_address(sgt->sgl);
 	cma_obj->sgt = sgt;
 
-	DRM_DEBUG_PRIME("dma_addr = %pad, size = %zu\n", &cma_obj->paddr, attach->dmabuf->size);
+	DRM_INFO("dma_addr = %pad, size = %zu\n", &cma_obj->paddr, attach->dmabuf->size);
 
 	return &cma_obj->base;
 }
