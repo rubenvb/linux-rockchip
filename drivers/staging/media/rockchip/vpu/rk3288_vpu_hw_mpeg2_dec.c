@@ -90,17 +90,20 @@ rk3288_vpu_mpeg2_dec_set_quantization(struct rockchip_vpu_dev *vpu,
 
 	quantization = rockchip_vpu_get_ctrl(ctx,
 				V4L2_CID_MPEG_VIDEO_MPEG2_QUANTIZATION);
-	rockchip_vpu_mpeg2_dec_copy_qtable(ctx->mpeg2_dec.qtable.cpu, quantization);
-	vdpu_write_relaxed(vpu, ctx->mpeg2_dec.qtable.dma, VDPU_REG_QTABLE_BASE);
+	rockchip_vpu_mpeg2_dec_copy_qtable(ctx->mpeg2_dec.qtable.cpu,
+					   quantization);
+	vdpu_write_relaxed(vpu, ctx->mpeg2_dec.qtable.dma,
+			   VDPU_REG_QTABLE_BASE);
 }
 
-static void rk3288_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
-					     struct rockchip_vpu_ctx *ctx,
-					     struct vb2_buffer *src_buf,
-					     struct vb2_buffer *dst_buf,
-					     const struct v4l2_mpeg2_sequence *sequence,
-					     const struct v4l2_mpeg2_picture *picture,
-					     const struct v4l2_ctrl_mpeg2_slice_params *slice_params)
+static void
+rk3288_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
+				 struct rockchip_vpu_ctx *ctx,
+				 struct vb2_buffer *src_buf,
+				 struct vb2_buffer *dst_buf,
+				 const struct v4l2_mpeg2_sequence *sequence,
+				 const struct v4l2_mpeg2_picture *picture,
+				 const struct v4l2_ctrl_mpeg2_slice_params *slice_params)
 {
 	dma_addr_t forward_addr = 0, backward_addr = 0;
 	dma_addr_t current_addr, addr;
@@ -110,10 +113,12 @@ static void rk3288_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
 
 	switch (picture->picture_coding_type) {
 	case V4L2_MPEG2_PICTURE_CODING_TYPE_B:
-		backward_addr = rockchip_vpu_get_ref(vq, slice_params->backward_ref_ts);
+		backward_addr = rockchip_vpu_get_ref(vq,
+						slice_params->backward_ref_ts);
 		/* fall-through */
 	case V4L2_MPEG2_PICTURE_CODING_TYPE_P:
-		forward_addr = rockchip_vpu_get_ref(vq, slice_params->forward_ref_ts);
+		forward_addr = rockchip_vpu_get_ref(vq,
+						slice_params->forward_ref_ts);
 	}
 
 	/* Source bitstream buffer */
@@ -125,7 +130,7 @@ static void rk3288_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
 	current_addr = addr;
 
 	if (picture->picture_structure == PICT_BOTTOM_FIELD)
-		addr += DIV_ROUND_UP(sequence->horizontal_size, 16) << 4;
+		addr += ALIGN(ctx->dst_fmt.width, 16);
 	vdpu_write_relaxed(vpu, addr, VDPU_REG_DEC_OUT_BASE);
 
 	if (!forward_addr)
@@ -136,8 +141,10 @@ static void rk3288_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
 	/* Set forward ref frame (top/bottom field) */
 	if (picture->picture_structure == PICT_FRAME ||
 	    picture->picture_coding_type == V4L2_MPEG2_PICTURE_CODING_TYPE_B ||
-	    (picture->picture_structure == PICT_TOP_FIELD && picture->top_field_first) ||
-	    (picture->picture_structure == PICT_BOTTOM_FIELD && !picture->top_field_first)) {
+	    (picture->picture_structure == PICT_TOP_FIELD &&
+	     picture->top_field_first) ||
+	    (picture->picture_structure == PICT_BOTTOM_FIELD &&
+	     !picture->top_field_first)) {
 		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER0_BASE);
 		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER1_BASE);
 	} else if (picture->picture_structure == PICT_TOP_FIELD) {
@@ -171,8 +178,6 @@ void rk3288_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 
 	slice_params = rockchip_vpu_get_ctrl(ctx,
 				V4L2_CID_MPEG_VIDEO_MPEG2_SLICE_PARAMS);
-	if (!slice_params)
-		return;
 	sequence = &slice_params->sequence;
 	picture = &slice_params->picture;
 
@@ -205,8 +210,8 @@ void rk3288_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 	      VDPU_REG_DEC_AXI_WR_ID(0);
 	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(3));
 
-	reg = VDPU_REG_PIC_MB_WIDTH(DIV_ROUND_UP(sequence->horizontal_size, 16)) |
-	      VDPU_REG_PIC_MB_HEIGHT_P(DIV_ROUND_UP(sequence->vertical_size, 16)) |
+	reg = VDPU_REG_PIC_MB_WIDTH(MPEG2_MB_WIDTH(ctx->dst_fmt.width)) |
+	      VDPU_REG_PIC_MB_HEIGHT_P(MPEG2_MB_HEIGHT(ctx->dst_fmt.height)) |
 	      VDPU_REG_ALT_SCAN_E(picture->alternate_scan) |
 	      VDPU_REG_TOPFIELDFIRST_E(picture->top_field_first);
 	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(4));
