@@ -456,18 +456,18 @@ static int rockchip_vpu_video_device_register(struct rockchip_vpu_dev *vpu,
 	snprintf(vfd->name, sizeof(vfd->name), "%s-%s", match->compatible,
 		 type == RK_VPU_ENCODER ? "enc" : "dec");
 
-	if (type == RK_VPU_ENCODER)
-		vpu->vfd_enc = vfd;
-	else
-		vpu->vfd_dec = vfd;
-	video_set_drvdata(vfd, vpu);
-
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, 0);
+	ret = video_register_device(vfd, VFL_TYPE_GRABBER, -1);
 	if (ret) {
 		v4l2_err(&vpu->v4l2_dev, "Failed to register video device\n");
 		goto err_free_dev;
 	}
 	v4l2_info(&vpu->v4l2_dev, "registered as /dev/video%d\n", vfd->num);
+
+	if (type == RK_VPU_ENCODER)
+		vpu->vfd_enc = vfd;
+	else
+		vpu->vfd_dec = vfd;
+	video_set_drvdata(vfd, vpu);
 
 	return 0;
 err_free_dev:
@@ -588,11 +588,11 @@ err_rm_links0:
 	media_entity_remove_links(&mc->proc);
 	media_entity_remove_links(mc->source);
 err_rel_entity2:
-	media_device_unregister_entity(&mc->proc);
-	kfree(mc->proc.name);
-err_rel_entity1:
 	media_device_unregister_entity(&mc->sink);
 	kfree(mc->sink.name);
+err_rel_entity1:
+	media_device_unregister_entity(&mc->proc);
+	kfree(mc->proc.name);
 err_rel_entity0:
 	media_device_unregister_entity(mc->source);
 	kfree(mc->source->name);
@@ -602,15 +602,15 @@ err_rel_entity0:
 static void rockchip_unregister_mc(struct rockchip_vpu_mc *mc)
 {
 	media_devnode_remove(mc->intf_devnode);
-	media_entity_remove_links(mc->source);
 	media_entity_remove_links(&mc->sink);
 	media_entity_remove_links(&mc->proc);
-	media_device_unregister_entity(mc->source);
+	media_entity_remove_links(mc->source);
 	media_device_unregister_entity(&mc->sink);
 	media_device_unregister_entity(&mc->proc);
-	kfree(mc->source->name);
+	media_device_unregister_entity(mc->source);
 	kfree(mc->sink.name);
 	kfree(mc->proc.name);
+	kfree(mc->source->name);
 }
 
 static int rockchip_register_media_controller(struct rockchip_vpu_dev *vpu)
@@ -638,7 +638,8 @@ static int rockchip_register_media_controller(struct rockchip_vpu_dev *vpu)
 					   vpu->vfd_dec,
 					   MEDIA_ENT_F_PROC_VIDEO_DECODER);
 		if (ret) {
-			rockchip_unregister_mc(&vpu->mc[0]);
+			if (vpu->vfd_enc)
+				rockchip_unregister_mc(&vpu->mc[0]);
 			return ret;
 		}
 	}
@@ -791,20 +792,18 @@ err_mc_unreg:
 	if (vpu->vfd_enc)
 		rockchip_unregister_mc(&vpu->mc[0]);
 err_video_dev_unreg:
-	if (vpu->vfd_dec) {
+	if (vpu->vfd_dec)
 		video_unregister_device(vpu->vfd_dec);
-		video_device_release(vpu->vfd_dec);
-	}
-	if (vpu->vfd_enc) {
+	if (vpu->vfd_enc)
 		video_unregister_device(vpu->vfd_enc);
-		video_device_release(vpu->vfd_enc);
-	}
 err_m2m_enc_rel:
+	media_device_cleanup(&vpu->mdev);
 	v4l2_m2m_release(vpu->m2m_dev);
 err_v4l2_unreg:
 	v4l2_device_unregister(&vpu->v4l2_dev);
 err_clk_unprepare:
 	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
+	pm_runtime_dont_use_autosuspend(vpu->dev);
 	pm_runtime_disable(vpu->dev);
 	return ret;
 }
@@ -816,20 +815,19 @@ static int rockchip_vpu_remove(struct platform_device *pdev)
 	v4l2_info(&vpu->v4l2_dev, "Removing %s\n", pdev->name);
 
 	media_device_unregister(&vpu->mdev);
-	v4l2_m2m_release(vpu->m2m_dev);
-	media_device_cleanup(&vpu->mdev);
-	if (vpu->vfd_enc) {
-		rockchip_unregister_mc(&vpu->mc[0]);
-		video_unregister_device(vpu->vfd_enc);
-		video_device_release(vpu->vfd_enc);
-	}
-	if (vpu->vfd_dec) {
+	if (vpu->vfd_dec)
 		rockchip_unregister_mc(&vpu->mc[1]);
+	if (vpu->vfd_enc)
+		rockchip_unregister_mc(&vpu->mc[0]);
+	if (vpu->vfd_dec)
 		video_unregister_device(vpu->vfd_dec);
-		video_device_release(vpu->vfd_dec);
-	}
+	if (vpu->vfd_enc)
+		video_unregister_device(vpu->vfd_enc);
+	media_device_cleanup(&vpu->mdev);
+	v4l2_m2m_release(vpu->m2m_dev);
 	v4l2_device_unregister(&vpu->v4l2_dev);
 	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
+	pm_runtime_dont_use_autosuspend(vpu->dev);
 	pm_runtime_disable(vpu->dev);
 	return 0;
 }
