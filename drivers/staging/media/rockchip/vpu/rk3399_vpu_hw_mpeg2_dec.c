@@ -110,7 +110,6 @@ rk3399_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
 	dma_addr_t forward_addr = 0, backward_addr = 0;
 	dma_addr_t current_addr, addr;
 	struct vb2_queue *vq;
-	unsigned int width = ctx->dst_fmt.width;
 
 	vq = v4l2_m2m_get_dst_vq(ctx->fh.m2m_ctx);
 
@@ -133,7 +132,7 @@ rk3399_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
 	current_addr = addr;
 
 	if (picture->picture_structure == PICT_BOTTOM_FIELD)
-		addr += ALIGN(width, 16);
+		addr += ALIGN(ctx->dst_fmt.width, 16);
 	vdpu_write_relaxed(vpu, addr, VDPU_REG_DEC_OUT_BASE);
 
 	if (!forward_addr)
@@ -170,11 +169,7 @@ void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 	const struct v4l2_ctrl_mpeg2_slice_params *slice_params;
 	const struct v4l2_mpeg2_sequence *sequence;
 	const struct v4l2_mpeg2_picture *picture;
-	int width, height;
 	u32 reg;
-
-	width = ctx->dst_fmt.width;
-	height = ctx->dst_fmt.height;
 
 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
@@ -232,8 +227,8 @@ void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 	      VDPU_REG_DEC_CLK_GATE_E(1);
 	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(57));
 
-	reg = VDPU_REG_PIC_MB_WIDTH(DIV_ROUND_UP(width, 16)) |
-	      VDPU_REG_PIC_MB_HEIGHT_P(DIV_ROUND_UP(height, 16)) |
+	reg = VDPU_REG_PIC_MB_WIDTH(MPEG2_MB_WIDTH(ctx->dst_fmt.width)) |
+	      VDPU_REG_PIC_MB_HEIGHT_P(MPEG2_MB_HEIGHT(ctx->dst_fmt.height)) |
 	      VDPU_REG_ALT_SCAN_E(picture->alternate_scan) |
 	      VDPU_REG_TOPFIELDFIRST_E(picture->top_field_first);
 	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(120));
