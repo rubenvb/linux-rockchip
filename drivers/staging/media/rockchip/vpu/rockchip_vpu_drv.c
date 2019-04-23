@@ -585,7 +585,7 @@ static int rockchip_vpu_add_func(struct rockchip_vpu_dev *vpu,
 
 	vfd = &func->vdev;
 	vfd->fops = &rockchip_vpu_fops;
-	vfd->release = video_device_release;
+	vfd->release = video_device_release_empty;
 	vfd->lock = &vpu->vpu_mutex;
 	vfd->v4l2_dev = &vpu->v4l2_dev;
 	vfd->vfl_dir = VFL_DIR_M2M;
