@@ -38,24 +38,23 @@ void rockchip_vpu_mpeg2_dec_copy_qtable(u8 *qtable,
 int rockchip_vpu_mpeg2_dec_init(struct rockchip_vpu_ctx *ctx)
 {
 	struct rockchip_vpu_dev *vpu = ctx->dev;
+	struct rockchip_vpu_mpeg2_dec_hw_ctx *mpeg2_dec = &ctx->mpeg2_dec;
+	struct rockchip_vpu_aux_buf *qtable = &mpeg2_dec->qtable;
 
-	ctx->mpeg2_dec.qtable.size = ARRAY_SIZE(zigzag) * 4;
-	ctx->mpeg2_dec.qtable.cpu =
-		dma_alloc_coherent(vpu->dev,
-				   ctx->mpeg2_dec.qtable.size,
-				   &ctx->mpeg2_dec.qtable.dma,
-				   GFP_KERNEL);
-	if (!ctx->mpeg2_dec.qtable.cpu)
+	qtable->size = ARRAY_SIZE(zigzag) * 4;
+	qtable->cpu = dma_alloc_coherent(vpu->dev, qtable->size, &qtable->dma,
+					 GFP_KERNEL);
+	if (!qtable->cpu)
 		return -ENOMEM;
+
 	return 0;
 }
 
 void rockchip_vpu_mpeg2_dec_exit(struct rockchip_vpu_ctx *ctx)
 {
 	struct rockchip_vpu_dev *vpu = ctx->dev;
+	struct rockchip_vpu_mpeg2_dec_hw_ctx *mpeg2_dec = &ctx->mpeg2_dec;
+	struct rockchip_vpu_aux_buf *qtable = &mpeg2_dec->qtable;
 
-	dma_free_coherent(vpu->dev,
-			  ctx->mpeg2_dec.qtable.size,
-			  ctx->mpeg2_dec.qtable.cpu,
-			  ctx->mpeg2_dec.qtable.dma);
+	dma_free_coherent(vpu->dev, qtable->size, qtable->cpu, qtable->dma);
 }

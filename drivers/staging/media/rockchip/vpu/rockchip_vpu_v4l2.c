@@ -342,10 +342,11 @@ rockchip_vpu_update_requires_request(struct rockchip_vpu_ctx *ctx,
 {
 	switch (fourcc) {
 	case V4L2_PIX_FMT_JPEG:
-		ctx->fh.m2m_ctx->out_q_ctx.q.requires_requests = true;
+		ctx->fh.m2m_ctx->out_q_ctx.q.requires_requests = false;
 		break;
 	case V4L2_PIX_FMT_MPEG2_SLICE:
-		ctx->fh.m2m_ctx->out_q_ctx.q.requires_requests = false;
+	case V4L2_PIX_FMT_H264_SLICE_RAW:
+		ctx->fh.m2m_ctx->out_q_ctx.q.requires_requests = true;
 		break;
 	default:
 		break;
@@ -521,6 +522,7 @@ rockchip_vpu_queue_setup(struct vb2_queue *vq,
 {
 	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vq);
 	struct v4l2_pix_format_mplane *pixfmt;
+	unsigned int extra_size0 = 0;
 	int i;
 
 	switch (vq->type) {
@@ -535,10 +537,22 @@ rockchip_vpu_queue_setup(struct vb2_queue *vq,
 		return -EINVAL;
 	}
 
+	/* The H264 decoder needs extra size on the capture buffer. */
+	if (vq->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
+	    ctx->vpu_src_fmt->fourcc == V4L2_PIX_FMT_H264_SLICE_RAW)
+		extra_size0 = 64 * H264_MB_WIDTH(pixfmt->width) *
+			      H264_MB_HEIGHT(pixfmt->height) + 32;
+
 	if (*num_planes) {
 		if (*num_planes != pixfmt->num_planes)
 			return -EINVAL;
-		for (i = 0; i < pixfmt->num_planes; ++i)
+		/*
+		 * The application is not aware of the extra size needed
+		 * for some codecs, so amend it without failing.
+		 */
+		if (sizes[0] < (pixfmt->plane_fmt[0].sizeimage + extra_size0))
+			sizes[0] = pixfmt->plane_fmt[0].sizeimage + extra_size0;
+		for (i = 1; i < pixfmt->num_planes; ++i)
 			if (sizes[i] < pixfmt->plane_fmt[i].sizeimage)
 				return -EINVAL;
 		return 0;
@@ -679,8 +693,30 @@ static int rockchip_vpu_buf_out_validate(struct vb2_buffer *vb)
 	return 0;
 }
 
+static int rockchip_vpu_buf_init(struct vb2_buffer *vb)
+{
+	struct vb2_queue *vq = vb->vb2_queue;
+	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vq);
+
+	if (!V4L2_TYPE_IS_OUTPUT(vq->type))
+		ctx->dst_bufs[vb->index] = vb;
+
+	return 0;
+}
+
+static void rockchip_vpu_buf_cleanup(struct vb2_buffer *vb)
+{
+	struct vb2_queue *vq = vb->vb2_queue;
+	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vq);
+
+	if (!V4L2_TYPE_IS_OUTPUT(vq->type))
+		ctx->dst_bufs[vb->index] = NULL;
+}
+
 const struct vb2_ops rockchip_vpu_queue_ops = {
 	.queue_setup = rockchip_vpu_queue_setup,
+	.buf_init = rockchip_vpu_buf_init,
+	.buf_cleanup = rockchip_vpu_buf_cleanup,
 	.buf_prepare = rockchip_vpu_buf_prepare,
 	.buf_queue = rockchip_vpu_buf_queue,
 	.buf_out_validate = rockchip_vpu_buf_out_validate,

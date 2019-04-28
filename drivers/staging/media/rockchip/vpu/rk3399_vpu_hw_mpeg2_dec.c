@@ -177,6 +177,8 @@ void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
 	v4l2_ctrl_request_setup(src_buf->vb2_buf.req_obj.req,
 				&ctx->ctrl_handler);
 
+	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
+
 	slice_params = rockchip_vpu_get_ctrl(ctx,
 				V4L2_CID_MPEG_VIDEO_MPEG2_SLICE_PARAMS);
 	sequence = &slice_params->sequence;
