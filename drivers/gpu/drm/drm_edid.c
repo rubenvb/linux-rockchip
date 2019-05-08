@@ -4889,6 +4889,54 @@ static bool is_hdmi2_sink(struct drm_connector *connector)
 }
 
 /**
+ * drm_hdmi_infoframe_set_hdr_metadata() - fill an HDMI AVI infoframe with
+ *                                         HDR metadata from userspace
+ * @frame: HDMI AVI infoframe
+ * @hdr_source_metadata: hdr_source_metadata info from userspace
+ *
+ * Return: 0 on success or a negative error code on failure.
+ */
+int
+drm_hdmi_infoframe_set_hdr_metadata(struct hdmi_drm_infoframe *frame,
+				    struct hdr_output_metadata *hdr_metadata)
+{
+	int err;
+
+	if (!frame || !hdr_metadata)
+		return true;
+
+	err = hdmi_drm_infoframe_init(frame);
+	if (err < 0)
+		return err;
+
+	DRM_DEBUG_KMS("type = %x\n", frame->type);
+
+	frame->length = sizeof(struct hdr_metadata_infoframe);
+
+	frame->eotf = hdr_metadata->hdmi_metadata_type1.eotf;
+	frame->metadata_type = hdr_metadata->hdmi_metadata_type1.metadata_type;
+
+	memcpy(&frame->display_primaries,
+	       &hdr_metadata->hdmi_metadata_type1.display_primaries, 12);
+
+	memcpy(&frame->white_point,
+	       &hdr_metadata->hdmi_metadata_type1.white_point, 4);
+
+	frame->max_display_mastering_luminance =
+		hdr_metadata->hdmi_metadata_type1.max_display_mastering_luminance;
+	frame->min_display_mastering_luminance =
+		hdr_metadata->hdmi_metadata_type1.min_display_mastering_luminance;
+	frame->max_fall = hdr_metadata->hdmi_metadata_type1.max_fall;
+	frame->max_cll = hdr_metadata->hdmi_metadata_type1.max_cll;
+
+	hdmi_infoframe_log(KERN_CRIT, NULL,
+			   (union hdmi_infoframe *)frame);
+
+	return 0;
+}
+EXPORT_SYMBOL(drm_hdmi_infoframe_set_hdr_metadata);
+
+/**
  * drm_hdmi_avi_infoframe_from_display_mode() - fill an HDMI AVI infoframe with
  *                                              data from a DRM display mode
  * @frame: HDMI AVI infoframe
