@@ -1801,6 +1801,57 @@ hdmi_vendor_any_infoframe_unpack(union hdmi_vendor_any_infoframe *frame,
 }
 
 /**
+ * hdmi_drm_infoframe_unpack() - unpack binary buffer to a HDMI DRM infoframe
+ * @frame: HDMI DRM infoframe
+ * @buffer: source buffer
+ * @size: size of buffer
+ *
+ * Unpacks the information contained in binary @buffer into a structured
+ * @frame of the HDMI Dynamic Range and Mastering (DRM) information frame.
+ * Also verifies the checksum as required by section 5.3.5 of the HDMI 1.4
+ * specification.
+ *
+ * Returns 0 on success or a negative error code on failure.
+ */
+static int hdmi_drm_infoframe_unpack(struct hdmi_drm_infoframe *frame,
+				     const void *buffer, size_t size)
+{
+	const u8 *ptr = buffer;
+	int ret;
+
+	if (size < HDMI_INFOFRAME_SIZE(DRM))
+		return -EINVAL;
+
+	if (ptr[0] != HDMI_INFOFRAME_TYPE_DRM ||
+	    ptr[1] != 1 ||
+	    ptr[2] != HDMI_DRM_INFOFRAME_SIZE)
+		return -EINVAL;
+
+	if (hdmi_infoframe_checksum(buffer, HDMI_INFOFRAME_SIZE(DRM)) != 0)
+		return -EINVAL;
+
+	ret = hdmi_drm_infoframe_init(frame);
+	if (ret)
+		return ret;
+
+	frame->length = ptr[2];
+	ptr += HDMI_INFOFRAME_HEADER_SIZE;
+
+	frame->eotf = ptr[0] & 0x7;
+	frame->metadata_type = ptr[1] & 0x7;
+
+	memcpy(&frame->display_primaries, &ptr[2], 12);
+	memcpy(&frame->white_point, &ptr[14], 4);
+
+	frame->max_display_mastering_luminance = (ptr[19] << 8) | ptr[18];
+	frame->min_display_mastering_luminance = (ptr[21] << 8) | ptr[20];
+	frame->max_cll = (ptr[23] << 8) | ptr[22];
+	frame->max_fall = (ptr[25] << 8) | ptr[24];
+
+	return 0;
+}
+
+/**
  * hdmi_infoframe_unpack() - unpack binary buffer to a HDMI infoframe
  * @frame: HDMI infoframe
  * @buffer: source buffer
@@ -1825,6 +1876,9 @@ int hdmi_infoframe_unpack(union hdmi_infoframe *frame,
 	switch (ptr[0]) {
 	case HDMI_INFOFRAME_TYPE_AVI:
 		ret = hdmi_avi_infoframe_unpack(&frame->avi, buffer, size);
+		break;
+	case HDMI_INFOFRAME_TYPE_DRM:
+		ret = hdmi_drm_infoframe_unpack(&frame->drm, buffer, size);
 		break;
 	case HDMI_INFOFRAME_TYPE_SPD:
 		ret = hdmi_spd_infoframe_unpack(&frame->spd, buffer, size);
