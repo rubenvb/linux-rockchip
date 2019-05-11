@@ -691,7 +691,7 @@ int hdmi_drm_infoframe_check(struct hdmi_drm_infoframe *frame)
 EXPORT_SYMBOL(hdmi_drm_infoframe_check);
 
 /**
- * hdmi_drm_infoframe_pack() - write HDMI DRM infoframe to binary buffer
+ * hdmi_drm_infoframe_pack_only() - write HDMI DRM infoframe to binary buffer
  * @frame: HDMI DRM infoframe
  * @buffer: destination buffer
  * @size: size of buffer
