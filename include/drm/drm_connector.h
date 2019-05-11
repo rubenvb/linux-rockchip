@@ -528,7 +528,7 @@ struct drm_connector_state {
 	u8 max_bpc;
 
 	/**
-	 * @metadata_blob_ptr:
+	 * @hdr_output_metadata:
 	 * DRM blob property for HDR output metadata
 	 */
 	struct drm_property_blob *hdr_output_metadata;
