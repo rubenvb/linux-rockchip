@@ -4890,10 +4890,10 @@ static bool is_hdmi2_sink(struct drm_connector *connector)
 }
 
 /**
- * drm_hdmi_infoframe_set_hdr_metadata() - fill an HDMI AVI infoframe with
+ * drm_hdmi_infoframe_set_hdr_metadata() - fill an HDMI DRM infoframe with
  *                                         HDR metadata from userspace
- * @frame: HDMI AVI infoframe
- * @hdr_source_metadata: hdr_source_metadata info from userspace
+ * @frame: HDMI DRM infoframe
+ * @hdr_metadata: hdr_source_metadata info from userspace
  *
  * Return: 0 on success or a negative error code on failure.
  */
@@ -4929,9 +4929,6 @@ drm_hdmi_infoframe_set_hdr_metadata(struct hdmi_drm_infoframe *frame,
 		hdr_metadata->hdmi_metadata_type1.min_display_mastering_luminance;
 	frame->max_fall = hdr_metadata->hdmi_metadata_type1.max_fall;
 	frame->max_cll = hdr_metadata->hdmi_metadata_type1.max_cll;
-
-	hdmi_infoframe_log(KERN_CRIT, NULL,
-			   (union hdmi_infoframe *)frame);
 
 	return 0;
 }
