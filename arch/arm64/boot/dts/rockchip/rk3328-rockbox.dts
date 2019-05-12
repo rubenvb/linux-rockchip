@@ -59,11 +59,16 @@
 		};
 	};
 
-	sound {
+	hdmi-sound {
 		compatible = "audio-graph-card";
-		label = "rockchip,rk3328";
-		dais = <&i2s0_p0
-			&spdif_p0>;
+		label = "HDMI";
+		dais = <&i2s0_p0>;
+	};
+
+	spdif-sound {
+		compatible = "audio-graph-card";
+		label = "SPDIF";
+		dais = <&spdif_p0>;
 	};
 
 	spdif-dit {
