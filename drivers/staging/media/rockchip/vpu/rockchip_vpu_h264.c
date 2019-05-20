@@ -242,23 +242,6 @@ reorder_scaling_list(struct rockchip_vpu_ctx *ctx,
 	}
 }
 
-static s32 get_poc(enum v4l2_field field, s32 top_field_order_cnt,
-		   s32 bottom_field_order_cnt)
-{
-	switch (field) {
-	case V4L2_FIELD_TOP:
-		return top_field_order_cnt;
-
-	case V4L2_FIELD_BOTTOM:
-		return bottom_field_order_cnt;
-
-	default:
-		break;
-	}
-
-	return min(top_field_order_cnt, bottom_field_order_cnt);
-}
-
 struct rockchip_h264_reflist_builder {
 	const struct v4l2_h264_dpb_entry *dpb;
 	s32 pocs[VPU_H264_NUM_DPB];
@@ -269,20 +252,21 @@ struct rockchip_h264_reflist_builder {
 static void
 init_reflist_builder(struct rockchip_vpu_ctx *ctx,
 		     const struct v4l2_ctrl_h264_decode_params *dec_param,
+		     const struct v4l2_ctrl_h264_slice_params *slice,
 		     u8 *reflist, struct rockchip_h264_reflist_builder *b)
 {
-	struct vb2_v4l2_buffer *buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
-	const struct v4l2_h264_dpb_entry *dpb = dec_param->dpb;
+	const struct v4l2_h264_dpb_entry *dpb = ctx->h264_dec.dpb;
 	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
 	unsigned int i;
 
 	b->dpb = dpb;
 	b->num_valid = 0;
-	b->curpoc = get_poc(buf->field, dec_param->top_field_order_cnt,
-			    dec_param->bottom_field_order_cnt);
+	b->curpoc = slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD ?
+		    dec_param->bottom_field_order_cnt :
+		    dec_param->top_field_order_cnt;
 	memset(reflist, 0, VPU_H264_NUM_DPB);
 
-	for (i = 0; i < ARRAY_SIZE(dec_param->dpb); i++) {
+	for (i = 0; i < ARRAY_SIZE(ctx->h264_dec.dpb); i++) {
 		int buf_idx;
 
 		if (!(dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE)) {
@@ -296,11 +280,10 @@ init_reflist_builder(struct rockchip_vpu_ctx *ctx,
 			continue;
 		}
 
-		buf = to_vb2_v4l2_buffer(ctx->dst_bufs[buf_idx]);
 		reflist[b->num_valid] = i;
-		b->pocs[b->num_valid] = get_poc(buf->field,
-						dpb[i].top_field_order_cnt,
-						dpb[i].bottom_field_order_cnt);
+		b->pocs[b->num_valid] = slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD ?
+					dpb[i].top_field_order_cnt :
+					dpb[i].top_field_order_cnt;
 		b->num_valid++;
 	}
 }
@@ -364,13 +347,13 @@ static int b0_ref_list_cmp(const void *ptra, const void *ptrb, void *data)
 	pocb = builder->pocs[idxb];
 
 	/*
-	 * Short term pics with POC < cur POC first in POC descending order
+	 * Short term pics with POC <= cur POC first in POC descending order
 	 * followed by short term pics with POC > cur POC in POC ascending
 	 * order.
 	 */
-	if ((poca < builder->curpoc) != (pocb < builder->curpoc))
+	if ((poca <= builder->curpoc) != (pocb <= builder->curpoc))
 		return poca - pocb;
-	else if (poca < builder->curpoc)
+	else if (poca <= builder->curpoc)
 		return pocb - poca;
 
 	return poca - pocb;
@@ -409,38 +392,123 @@ static int b1_ref_list_cmp(const void *ptra, const void *ptrb, void *data)
 	 * followed by short term pics with POC > cur POC in POC descending
 	 * order.
 	 */
-	if ((poca < builder->curpoc) != (pocb < builder->curpoc))
+	if ((poca > builder->curpoc) != (pocb > builder->curpoc))
 		return pocb - poca;
-	else if (poca < builder->curpoc)
-		return pocb - poca;
+	else if (poca > builder->curpoc)
+		return poca - pocb;
 
-	return poca - pocb;
+	return pocb - poca;
 }
 
 void rockchip_vpu_h264_dec_build_p_ref_list(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
+	const struct v4l2_ctrl_h264_slice_params *slice,
 	u8 *reflist)
 {
 	struct rockchip_h264_reflist_builder builder;
 
-	init_reflist_builder(ctx, dec_param, reflist, &builder);
+	init_reflist_builder(ctx, dec_param, slice, reflist, &builder);
 	sort_r(reflist, builder.num_valid, sizeof(*reflist),
 	       p_ref_list_cmp, NULL, &builder);
 }
 
 void rockchip_vpu_h264_dec_build_b_ref_lists(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
+	const struct v4l2_ctrl_h264_slice_params *slice,
 	u8 *b0_reflist, u8 *b1_reflist)
 {
 	struct rockchip_h264_reflist_builder builder;
 
-	init_reflist_builder(ctx, dec_param, b0_reflist, &builder);
+	init_reflist_builder(ctx, dec_param, slice, b0_reflist, &builder);
 	sort_r(b0_reflist, builder.num_valid, sizeof(*b0_reflist),
 	       b0_ref_list_cmp, NULL, &builder);
 
-	init_reflist_builder(ctx, dec_param, b1_reflist, &builder);
+	init_reflist_builder(ctx, dec_param, slice, b1_reflist, &builder);
 	sort_r(b1_reflist, builder.num_valid, sizeof(*b1_reflist),
 	       b1_ref_list_cmp, NULL, &builder);
+}
+
+static bool dpb_entry_match(const struct v4l2_h264_dpb_entry *a,
+			    const struct v4l2_h264_dpb_entry *b)
+{
+	return a->reference_ts == b->reference_ts;
+}
+
+static void update_dpb(struct rockchip_vpu_ctx *ctx,
+	const struct v4l2_ctrl_h264_decode_params *dec_param)
+{
+	DECLARE_BITMAP(new, ARRAY_SIZE(ctx->h264_dec.dpb)) = { 0, };
+	DECLARE_BITMAP(used, ARRAY_SIZE(ctx->h264_dec.dpb)) = { 0, };
+	unsigned int i, j;
+
+	//for (i = 0; i < ARRAY_SIZE(ctx->h264_dec.dpb); i++) {
+	//	const struct v4l2_h264_dpb_entry *ndpb = &ctx->h264_dec.dpb[i];
+	//	struct v4l2_h264_dpb_entry *cdpb = &ctx->h264_dec.dpb[i];
+	//	*cdpb = *ndpb;
+	//}
+	//return;
+
+	/* Disable all entries by default. */
+	for (i = 0; i < ARRAY_SIZE(ctx->h264_dec.dpb); i++)
+		ctx->h264_dec.dpb[i].flags = 0;
+
+	/* Try to match new DPB entries with existing ones by their POCs. */
+	for (i = 0; i < ARRAY_SIZE(ctx->h264_dec.dpb); i++) {
+		const struct v4l2_h264_dpb_entry *ndpb = &dec_param->dpb[i];
+
+		if (!(ndpb->flags & V4L2_H264_DPB_ENTRY_FLAG_VALID))
+			continue;
+
+		/*
+		 * To cut off some comparisons, iterate only on target DPB
+		 * entries which are not used yet.
+		 */
+		for_each_clear_bit(j, used, ARRAY_SIZE(ctx->h264_dec.dpb)) {
+			struct v4l2_h264_dpb_entry *cdpb;
+
+			cdpb = &ctx->h264_dec.dpb[j];
+			if (!dpb_entry_match(cdpb, ndpb))
+				continue;
+
+			*cdpb = *ndpb;
+			set_bit(j, used);
+			break;
+		}
+
+		if (j == ARRAY_SIZE(ctx->h264_dec.dpb))
+			set_bit(i, new);
+	}
+
+	/* For entries that could not be matched, use remaining free slots. */
+	for_each_set_bit(i, new, ARRAY_SIZE(ctx->h264_dec.dpb)) {
+		const struct v4l2_h264_dpb_entry *ndpb = &dec_param->dpb[i];
+		struct v4l2_h264_dpb_entry *cdpb;
+
+		/*
+		 * Both arrays are of the same sizes, so there is no way
+		 * we can end up with no space in target array, unless
+		 * something is buggy.
+		 */
+		j = find_first_zero_bit(used, ARRAY_SIZE(ctx->h264_dec.dpb));
+		if (WARN_ON(j >= ARRAY_SIZE(ctx->h264_dec.dpb)))
+			return;
+
+		cdpb = &ctx->h264_dec.dpb[j];
+		*cdpb = *ndpb;
+		set_bit(j, used);
+	}
+
+	//for_each_clear_bit(j, used, ARRAY_SIZE(ctx->h264_dec.dpb)) {
+	//	struct v4l2_h264_dpb_entry *cdpb;
+
+	//	cdpb = &ctx->h264_dec.dpb[j];
+	//	*cdpb = (struct v4l2_h264_dpb_entry) {};
+	//}
+}
+
+static s32 get_poc(s32 poc)
+{
+	return poc != INT_MAX ? poc : 0;
 }
 
 void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
@@ -449,10 +517,12 @@ void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_scaling_matrix *scaling)
 {
 	struct rockchip_vpu_h264_dec_priv_tbl *tbl = ctx->h264_dec.priv.cpu;
-	const struct v4l2_h264_dpb_entry *dpb = dec_param->dpb;
+	const struct v4l2_h264_dpb_entry *dpb = ctx->h264_dec.dpb;
 	u32 dpb_longterm = 0;
 	u32 dpb_valid = 0;
 	int i;
+
+	update_dpb(ctx, dec_param);
 
 	/*
 	 * Set up bit maps of valid and long term DPBs.
@@ -460,8 +530,9 @@ void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
 	 */
 	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC) {
 		for (i = 0; i < VPU_H264_NUM_DPB * 2; ++i) {
-			// TODO: check for correct reference use
-			if (dpb[i / 2].flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE)
+			// HACK: check for correct reference use
+			u32 flag = (i & 0x1 ? 0x2 : 0x1) << 6;
+			if (dpb[i / 2].flags & flag)
 				dpb_valid |= BIT(VPU_H264_NUM_DPB * 2 - 1 - i);
 
 			if (dpb[i / 2].flags & V4L2_H264_DPB_ENTRY_FLAG_LONG_TERM)
@@ -485,16 +556,16 @@ void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
 
 	for (i = 0; i < VPU_H264_NUM_DPB; ++i) {
 		if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE) {
-			tbl->poc[i * 2] = dpb[i].top_field_order_cnt;
-			tbl->poc[i * 2 + 1] = dpb[i].bottom_field_order_cnt;
+			tbl->poc[i * 2] = get_poc(dpb[i].top_field_order_cnt);
+			tbl->poc[i * 2 + 1] = get_poc(dpb[i].bottom_field_order_cnt);
 		} else {
 			tbl->poc[i * 2] = 0;
 			tbl->poc[i * 2 + 1] = 0;
 		}
 	}
 
-	tbl->poc[32] = dec_param->top_field_order_cnt;
-	tbl->poc[33] = dec_param->bottom_field_order_cnt;
+	tbl->poc[32] = get_poc(dec_param->top_field_order_cnt);
+	tbl->poc[33] = get_poc(dec_param->bottom_field_order_cnt);
 
 	reorder_scaling_list(ctx, scaling);
 }

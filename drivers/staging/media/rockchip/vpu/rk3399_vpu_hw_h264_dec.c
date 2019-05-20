@@ -219,22 +219,34 @@ static u16 get_dpb_nbr(const struct v4l2_ctrl_h264_decode_params *dec_param,
 }
 
 static dma_addr_t get_dpb_addr(struct rockchip_vpu_ctx *ctx,
-	const struct v4l2_ctrl_h264_decode_params *dec_param, int i)
+	const struct v4l2_ctrl_h264_decode_params *dec_param,
+	const struct v4l2_ctrl_h264_slice_params *slice,
+	int i)
 {
 	const struct v4l2_h264_dpb_entry *dpb = &dec_param->dpb[i];
 	struct vb2_queue *q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
 	struct vb2_v4l2_buffer *dst_buf;
+	u32 flags = 0;
 	int idx = -1;
 
-	if (dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE)
+	if (dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE) {
+		s32 cur_poc = slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD ?
+			      dec_param->bottom_field_order_cnt :
+			      dec_param->top_field_order_cnt;
+		flags = dpb->top_field_order_cnt != dpb->bottom_field_order_cnt ? 0x2 : 0;
+		flags |= abs(dpb->top_field_order_cnt - cur_poc) <
+			 abs(dpb->bottom_field_order_cnt - cur_poc) ?
+			 0x1 : 0;
+
 		idx = vb2_find_timestamp(q, dpb->reference_ts, 0);
+	}
 
 	if (idx >= 0)
 		dst_buf = to_vb2_v4l2_buffer(ctx->dst_bufs[idx]);
 	else
 		dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
 
-	return vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0);
+	return vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0) | flags;
 }
 
 void rk3399_vpu_h264_dec_run(struct rockchip_vpu_ctx *ctx)
@@ -272,8 +284,8 @@ void rk3399_vpu_h264_dec_run(struct rockchip_vpu_ctx *ctx)
 
 	rockchip_vpu_h264_dec_prepare_table(ctx, dec_param, slice, scaling);
 
-	rockchip_vpu_h264_dec_build_p_ref_list(ctx, dec_param, p_reflist);
-	rockchip_vpu_h264_dec_build_b_ref_lists(ctx, dec_param, b0_reflist, b1_reflist);
+	rockchip_vpu_h264_dec_build_p_ref_list(ctx, dec_param, slice, p_reflist);
+	rockchip_vpu_h264_dec_build_b_ref_lists(ctx, dec_param, slice, b0_reflist, b1_reflist);
 
 	reg = VDPU_REG_DEC_ADV_PRE_DIS(0) |
 	      VDPU_REG_DEC_SCMD_DIS(0) |
@@ -500,22 +512,22 @@ void rk3399_vpu_h264_dec_run(struct rockchip_vpu_ctx *ctx)
 	//	H264_MB_HEIGHT(ctx->dst_fmt.height);
         // TODO: clear multi core sync bytes
 
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 0), VDPU_REG_REFER0_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 1), VDPU_REG_REFER1_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 2), VDPU_REG_REFER2_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 3), VDPU_REG_REFER3_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 4), VDPU_REG_REFER4_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 5), VDPU_REG_REFER5_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 6), VDPU_REG_REFER6_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 7), VDPU_REG_REFER7_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 8), VDPU_REG_REFER8_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 9), VDPU_REG_REFER9_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 10), VDPU_REG_REFER10_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 11), VDPU_REG_REFER11_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 12), VDPU_REG_REFER12_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 13), VDPU_REG_REFER13_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 14), VDPU_REG_REFER14_BASE);
-	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, 15), VDPU_REG_REFER15_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 0), VDPU_REG_REFER0_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 1), VDPU_REG_REFER1_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 2), VDPU_REG_REFER2_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 3), VDPU_REG_REFER3_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 4), VDPU_REG_REFER4_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 5), VDPU_REG_REFER5_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 6), VDPU_REG_REFER6_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 7), VDPU_REG_REFER7_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 8), VDPU_REG_REFER8_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 9), VDPU_REG_REFER9_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 10), VDPU_REG_REFER10_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 11), VDPU_REG_REFER11_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 12), VDPU_REG_REFER12_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 13), VDPU_REG_REFER13_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 14), VDPU_REG_REFER14_BASE);
+	vdpu_write_relaxed(vpu, get_dpb_addr(ctx, dec_param, slice, 15), VDPU_REG_REFER15_BASE);
 
 	/* Controls no longer in-use, we can complete them */
 	v4l2_ctrl_request_complete(src_buf->vb2_buf.req_obj.req,

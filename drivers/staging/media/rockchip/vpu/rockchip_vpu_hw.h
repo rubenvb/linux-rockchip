@@ -55,6 +55,7 @@ struct rockchip_vpu_mpeg2_dec_hw_ctx {
  */
 struct rockchip_vpu_h264_dec_hw_ctx {
 	struct rockchip_vpu_aux_buf priv;
+	struct v4l2_h264_dpb_entry dpb[16];
 	u32 dpb_longterm;
 	u32 dpb_valid;
 };
@@ -116,9 +117,11 @@ void rk3288_vpu_h264_dec_run(struct rockchip_vpu_ctx *ctx);
 void rk3399_vpu_h264_dec_run(struct rockchip_vpu_ctx *ctx);
 void rockchip_vpu_h264_dec_build_p_ref_list(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
+	const struct v4l2_ctrl_h264_slice_params *slice,
 	u8 *reflist);
 void rockchip_vpu_h264_dec_build_b_ref_lists(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
+	const struct v4l2_ctrl_h264_slice_params *slice,
 	u8 *b0_reflist, u8 *b1_reflist);
 void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
