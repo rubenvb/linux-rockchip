@@ -190,20 +190,17 @@ static const u32 h264_cabac_table[] = {
 };
 
 /*
- * NOTE: The scaling lists are in zig-zag order, apply inverse scanning process
- * to get the values in matrix order. In addition, the hardware requires bytes
- * swapped within each subsequent 4 bytes. Both arrays below include both
- * transformations.
+ * NOTE: The hardware requires bytes swapped within each subsequent 4 bytes.
  */
 static const u32 zig_zag_4x4[] = {
-	3, 2, 7, 11, 6, 1, 0, 5, 10, 15, 14, 9, 4, 8, 13, 12
+	3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12
 };
 
 static const u32 zig_zag_8x8[] = {
-	3, 2, 11, 19, 10, 1, 0, 9, 18, 27, 35, 26, 17, 8, 7, 6,
-	15, 16, 25, 34, 43, 51, 42, 33, 24, 23, 14, 5, 4, 13, 22, 31,
-	32, 41, 50, 59, 58, 49, 40, 39, 30, 21, 12, 20, 29, 38, 47, 48,
-	57, 56, 55, 46, 37, 28, 36, 45, 54, 63, 62, 53, 44, 52, 61, 60
+	3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+	19, 18, 17, 16, 23, 22, 21, 20, 27, 26, 25, 24, 31, 30, 29, 28,
+	35, 34, 33, 32, 39, 38, 37, 36, 43, 42, 41, 40, 47, 46, 45, 44,
+	51, 50, 49, 48, 55, 54, 53, 52, 59, 58, 57, 56, 63, 62, 61, 60
 };
 
 static void
@@ -400,16 +397,39 @@ static int b1_ref_list_cmp(const void *ptra, const void *ptrb, void *data)
 	return pocb - poca;
 }
 
+#define REF_IDX(v)		(v & GENMASK(5, 0))
+#define REF_FIELD(v)		(v >> 6)
+#define REF_FIELD_BOTTOM	2
+
 void rockchip_vpu_h264_dec_build_p_ref_list(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
 	const struct v4l2_ctrl_h264_slice_params *slice,
 	u8 *reflist)
 {
 	struct rockchip_h264_reflist_builder builder;
+        int i, n;
 
-	init_reflist_builder(ctx, dec_param, slice, reflist, &builder);
-	sort_r(reflist, builder.num_valid, sizeof(*reflist),
-	       p_ref_list_cmp, NULL, &builder);
+	for (i = 0; i < 16; i++)
+		reflist[i] = i;
+
+	if (!(slice->slice_type == V4L2_H264_SLICE_TYPE_P) &&
+	    !(slice->slice_type == V4L2_H264_SLICE_TYPE_SP))
+		return;
+
+	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC) {
+		int field = (slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD) ? 0x1 : 0x2;
+		for (i = 0, n = 0; i < 32; i++)
+			if (slice->ref_pic_list1[i] != 0xff && REF_FIELD(slice->ref_pic_list1[i]) == field)
+				reflist[n++] = REF_IDX(slice->ref_pic_list0[i]);
+	} else {
+		for (i = 0; i < 16; i++)
+			if (slice->ref_pic_list0[i] != 0xff)
+				reflist[i] = REF_IDX(slice->ref_pic_list0[i]);
+	}
+
+	//init_reflist_builder(ctx, dec_param, slice, reflist, &builder);
+	//sort_r(reflist, builder.num_valid, sizeof(*reflist),
+	//       p_ref_list_cmp, NULL, &builder);
 }
 
 void rockchip_vpu_h264_dec_build_b_ref_lists(struct rockchip_vpu_ctx *ctx,
@@ -418,14 +438,42 @@ void rockchip_vpu_h264_dec_build_b_ref_lists(struct rockchip_vpu_ctx *ctx,
 	u8 *b0_reflist, u8 *b1_reflist)
 {
 	struct rockchip_h264_reflist_builder builder;
+	int i, n;
 
-	init_reflist_builder(ctx, dec_param, slice, b0_reflist, &builder);
-	sort_r(b0_reflist, builder.num_valid, sizeof(*b0_reflist),
-	       b0_ref_list_cmp, NULL, &builder);
+	for (i = 0; i < 16; i++) {
+		b0_reflist[i] = i;
+		b1_reflist[i] = i;
+	}
 
-	init_reflist_builder(ctx, dec_param, slice, b1_reflist, &builder);
-	sort_r(b1_reflist, builder.num_valid, sizeof(*b1_reflist),
-	       b1_ref_list_cmp, NULL, &builder);
+	if (!(slice->slice_type == V4L2_H264_SLICE_TYPE_B))
+		return;
+
+	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC) {
+		int field = (slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD) ? 0x1 : 0x2;
+		for (i = 0, n = 0; i < 32; i++)
+			if (slice->ref_pic_list0[i] != 0xff && REF_FIELD(slice->ref_pic_list0[i]) == field)
+				b0_reflist[n++] = REF_IDX(slice->ref_pic_list0[i]);
+
+		for (i = 0, n = 0; i < 32; i++)
+			if (slice->ref_pic_list1[i] != 0xff && REF_FIELD(slice->ref_pic_list1[i]) == field)
+				b1_reflist[n++] = REF_IDX(slice->ref_pic_list1[i]);
+	} else {
+		for (i = 0; i < 16; i++)
+			if (slice->ref_pic_list0[i] != 0xff)
+				b0_reflist[i] = REF_IDX(slice->ref_pic_list0[i]);
+
+		for (i = 0; i < 16; i++)
+			if (slice->ref_pic_list1[i] != 0xff)
+				b1_reflist[i] = REF_IDX(slice->ref_pic_list1[i]);
+	}
+
+	//init_reflist_builder(ctx, dec_param, slice, b0_reflist, &builder);
+	//sort_r(b0_reflist, builder.num_valid, sizeof(*b0_reflist),
+	//       b0_ref_list_cmp, NULL, &builder);
+
+	//init_reflist_builder(ctx, dec_param, slice, b1_reflist, &builder);
+	//sort_r(b1_reflist, builder.num_valid, sizeof(*b1_reflist),
+	//       b1_ref_list_cmp, NULL, &builder);
 }
 
 static bool dpb_entry_match(const struct v4l2_h264_dpb_entry *a,
@@ -441,12 +489,12 @@ static void update_dpb(struct rockchip_vpu_ctx *ctx,
 	DECLARE_BITMAP(used, ARRAY_SIZE(ctx->h264_dec.dpb)) = { 0, };
 	unsigned int i, j;
 
-	//for (i = 0; i < ARRAY_SIZE(ctx->h264_dec.dpb); i++) {
-	//	const struct v4l2_h264_dpb_entry *ndpb = &ctx->h264_dec.dpb[i];
-	//	struct v4l2_h264_dpb_entry *cdpb = &ctx->h264_dec.dpb[i];
-	//	*cdpb = *ndpb;
-	//}
-	//return;
+	for (i = 0; i < ARRAY_SIZE(ctx->h264_dec.dpb); i++) {
+		const struct v4l2_h264_dpb_entry *ndpb = &dec_param->dpb[i];
+		struct v4l2_h264_dpb_entry *cdpb = &ctx->h264_dec.dpb[i];
+		*cdpb = *ndpb;
+	}
+	return;
 
 	/* Disable all entries by default. */
 	for (i = 0; i < ARRAY_SIZE(ctx->h264_dec.dpb); i++)
@@ -506,10 +554,11 @@ static void update_dpb(struct rockchip_vpu_ctx *ctx,
 	//}
 }
 
-static s32 get_poc(s32 poc)
-{
-	return poc != INT_MAX ? poc : 0;
-}
+// HACK: new flags
+#define V4L2_H264_DPB_ENTRY_FLAG_FIELD_PICTURE	0x08
+#define V4L2_H264_DPB_ENTRY_FLAG_REF_TOP	0x10
+#define V4L2_H264_DPB_ENTRY_FLAG_REF_BOTTOM	0x20
+#define V4L2_H264_DPB_ENTRY_FLAG_REF_FRAME	0x30
 
 void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
@@ -530,8 +579,8 @@ void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
 	 */
 	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC) {
 		for (i = 0; i < VPU_H264_NUM_DPB * 2; ++i) {
-			// HACK: check for correct reference use
-			u32 flag = (i & 0x1 ? 0x2 : 0x1) << 6;
+			// check for correct reference use
+			u32 flag = (i & 0x1) ? V4L2_H264_DPB_ENTRY_FLAG_REF_BOTTOM : V4L2_H264_DPB_ENTRY_FLAG_REF_TOP;
 			if (dpb[i / 2].flags & flag)
 				dpb_valid |= BIT(VPU_H264_NUM_DPB * 2 - 1 - i);
 
@@ -556,16 +605,22 @@ void rockchip_vpu_h264_dec_prepare_table(struct rockchip_vpu_ctx *ctx,
 
 	for (i = 0; i < VPU_H264_NUM_DPB; ++i) {
 		if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE) {
-			tbl->poc[i * 2] = get_poc(dpb[i].top_field_order_cnt);
-			tbl->poc[i * 2 + 1] = get_poc(dpb[i].bottom_field_order_cnt);
+			tbl->poc[i * 2] = (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_REF_TOP) ? dpb[i].top_field_order_cnt : 0;
+			tbl->poc[i * 2 + 1] = (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_REF_BOTTOM) ? dpb[i].bottom_field_order_cnt : 0;
 		} else {
 			tbl->poc[i * 2] = 0;
 			tbl->poc[i * 2 + 1] = 0;
 		}
 	}
 
-	tbl->poc[32] = get_poc(dec_param->top_field_order_cnt);
-	tbl->poc[33] = get_poc(dec_param->bottom_field_order_cnt);
+	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC) {
+		tbl->poc[32] = (slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD) ?
+				dec_param->bottom_field_order_cnt :
+				dec_param->top_field_order_cnt;
+	} else {
+		tbl->poc[32] = dec_param->top_field_order_cnt;
+		tbl->poc[33] = dec_param->bottom_field_order_cnt;
+	}
 
 	reorder_scaling_list(ctx, scaling);
 }

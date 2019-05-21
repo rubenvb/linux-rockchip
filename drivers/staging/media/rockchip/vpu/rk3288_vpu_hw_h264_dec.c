@@ -199,6 +199,12 @@
 
 #define VDPU_REG_APF_THRESHOLD(v)	(((v) << 0) & GENMASK(13, 0))
 
+// HACK: new flags
+#define V4L2_H264_DPB_ENTRY_FLAG_FIELD_PICTURE	0x08
+#define V4L2_H264_DPB_ENTRY_FLAG_REF_TOP	0x10
+#define V4L2_H264_DPB_ENTRY_FLAG_REF_BOTTOM	0x20
+#define V4L2_H264_DPB_ENTRY_FLAG_REF_FRAME	0x30
+
 static u16 get_dpb_nbr(const struct rockchip_vpu_ctx *ctx,
 	const struct v4l2_ctrl_h264_decode_params *dec_param,
 	int i)
@@ -229,8 +235,7 @@ static dma_addr_t get_dpb_addr(const struct rockchip_vpu_ctx *ctx,
 		s32 cur_poc = slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD ?
 			      dec_param->bottom_field_order_cnt :
 			      dec_param->top_field_order_cnt;
-		flags = slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC &&
-			dpb->top_field_order_cnt != dpb->bottom_field_order_cnt ? 0x2 : 0;
+		flags = dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_FIELD_PICTURE ? 0x2 : 0;
 		flags |= abs(dpb->top_field_order_cnt - cur_poc) <
 			 abs(dpb->bottom_field_order_cnt - cur_poc) ?
 			 0x1 : 0;
