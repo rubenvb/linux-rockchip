@@ -972,7 +972,7 @@ static int meson_dw_hdmi_bind(struct device *dev, struct device *master,
 	if (dw_hdmi_is_compatible(meson_dw_hdmi, "amlogic,meson-gxl-dw-hdmi") ||
 	    dw_hdmi_is_compatible(meson_dw_hdmi, "amlogic,meson-gxm-dw-hdmi") ||
 	    dw_hdmi_is_compatible(meson_dw_hdmi, "amlogic,meson-g12a-dw-hdmi"))
-		dw_plat_data->drm_infoframe = true;
+		dw_plat_data->use_drm_infoframe = true;
 
 	platform_set_drvdata(pdev, meson_dw_hdmi);
 
