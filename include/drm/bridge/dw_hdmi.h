@@ -131,6 +131,7 @@ struct dw_hdmi_plat_data {
 	unsigned long input_bus_format;
 	unsigned long input_bus_encoding;
 	bool ycbcr_420_allowed;
+	bool drm_infoframe;
 
 	/* Vendor PHY support */
 	const struct dw_hdmi_phy_ops *phy_ops;
