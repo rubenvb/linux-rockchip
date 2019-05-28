@@ -289,7 +289,7 @@ static struct rockchip_vpu_ctrl controls[] = {
 		.cfg = {
 			.elem_size = sizeof(struct v4l2_ctrl_mpeg2_quantization),
 		},
-        }, {
+	}, {
 		.id = V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS,
 		.codec = RK_VPU_H264_DECODER,
 		.cfg = {
@@ -319,7 +319,6 @@ static struct rockchip_vpu_ctrl controls[] = {
 		.cfg = {
 			.elem_size = sizeof(struct v4l2_ctrl_h264_scaling_matrix),
 		},
-	}, {
 	},
 };
 

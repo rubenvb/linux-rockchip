@@ -51,7 +51,7 @@ struct rockchip_vpu_mpeg2_dec_hw_ctx {
 /**
  * struct rockchip_vpu_h264_dec_hw_ctx - Per context data specific to H264
  * decoding.
- * @priv_tbl:		Private auxiliary buffer for hardware.
+ * @priv:		Private auxiliary buffer for hardware.
  */
 struct rockchip_vpu_h264_dec_hw_ctx {
 	struct rockchip_vpu_aux_buf priv;

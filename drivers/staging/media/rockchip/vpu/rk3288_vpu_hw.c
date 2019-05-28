@@ -79,11 +79,11 @@ static const struct rockchip_vpu_fmt rk3288_vpu_dec_fmts[] = {
 		.max_depth = 2,
 		.frmsize = {
 			.min_width = 48,
-			.max_width = 3840,
-			.step_width = 16,
+			.max_width = 4096,
+			.step_width = H264_MB_DIM,
 			.min_height = 48,
-			.max_height = 2160,
-			.step_height = 16,
+			.max_height = 2304,
+			.step_height = H264_MB_DIM,
 		},
 	},
 };
