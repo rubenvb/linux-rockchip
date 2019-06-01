@@ -141,7 +141,7 @@
 				sound-dai = <&hdmi_tx>;
 			};
 		};
-	};	
+	};
 };
 
 &cec_AO {
