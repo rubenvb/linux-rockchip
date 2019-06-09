@@ -42,6 +42,7 @@ extern "C" {
  * to communicate to driver
  */
 
+#define DRM_DISPLAY_INFO_LEN	32
 #define DRM_CONNECTOR_NAME_LEN	32
 #define DRM_DISPLAY_MODE_LEN	32
 #define DRM_PROP_NAME_LEN	32
