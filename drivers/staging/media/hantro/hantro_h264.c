@@ -199,28 +199,25 @@ reorder_scaling_list(struct hantro_ctx *ctx)
 {
 	const struct hantro_h264_dec_ctrls *ctrls = &ctx->h264_dec.ctrls;
 	const struct v4l2_ctrl_h264_scaling_matrix *scaling = ctrls->scaling;
+	const size_t num_list_4x4 = ARRAY_SIZE(scaling->scaling_list_4x4);
+	const size_t list_len_4x4 = ARRAY_SIZE(scaling->scaling_list_4x4[0]);
+	const size_t list_len_8x8 = ARRAY_SIZE(scaling->scaling_list_8x8[0]);
 	struct hantro_h264_dec_priv_tbl *tbl = ctx->h264_dec.priv.cpu;
 	u32 *dst = (u32 *)tbl->scaling_list;
-	u32 i, j, tmp;
+	const u32 *src;
+	int i, j;
 
-	for (i = 0; i < ARRAY_SIZE(scaling->scaling_list_4x4); i++) {
-		for (j = 0; j < ARRAY_SIZE(scaling->scaling_list_4x4[0]) / 4; j++) {
-			tmp = (scaling->scaling_list_4x4[i][4 * j + 0] << 24) |
-			      (scaling->scaling_list_4x4[i][4 * j + 1] << 16) |
-			      (scaling->scaling_list_4x4[i][4 * j + 2] << 8) |
-			      (scaling->scaling_list_4x4[i][4 * j + 3]);
-			*dst++ = tmp;
-		}
+	for (i = 0; i < num_list_4x4; i++) {
+		src = (u32 *)&scaling->scaling_list_4x4[i];
+		for (j = 0; j < list_len_4x4 / 4; j++)
+			*dst++ = swab32(src[j]);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(scaling->scaling_list_8x8); i += 3) {
-		for (j = 0; j < ARRAY_SIZE(scaling->scaling_list_8x8[0]) / 4; j++) {
-			tmp = (scaling->scaling_list_8x8[i][4 * j + 0] << 24) |
-			      (scaling->scaling_list_8x8[i][4 * j + 1] << 16) |
-			      (scaling->scaling_list_8x8[i][4 * j + 2] << 8) |
-			      (scaling->scaling_list_8x8[i][4 * j + 3]);
-			*dst++ = tmp;
-		}
+	/* Only Intra/Inter Y lists */
+	for (i = 0; i < 2; i++) {
+		src = (u32 *)&scaling->scaling_list_8x8[i];
+		for (j = 0; j < list_len_8x8 / 4; j++)
+			*dst++ = swab32(src[j]);
 	}
 }
 
