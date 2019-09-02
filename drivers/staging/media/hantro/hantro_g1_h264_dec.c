@@ -422,7 +422,7 @@ void hantro_g1_h264_dec_run(struct hantro_ctx *ctx)
 	reg = G1_REG_APF_THRESHOLD(8);
 	vdpu_write_relaxed(vpu, reg, G1_SWREG(55));
 
-	/* Auxiliary buffer prepared in hantro_g1_h264_dec_prepare_table(). */
+	/* Auxiliary buffer prepared in hantro_h264_dec_prepare_run(). */
 	vdpu_write_relaxed(vpu, ctx->h264_dec.priv.dma, G1_REG_QTABLE_BASE);
 
 	/* Source (stream) buffer. */
@@ -440,10 +440,10 @@ void hantro_g1_h264_dec_run(struct hantro_ctx *ctx)
 	if (sps->profile_idc >= 100 && sps->chroma_format_idc == 0)
 		offset = MV_OFFSET_400;
 	addr += offset * H264_MB_WIDTH(ctx->dst_fmt.width) *
-		   H264_MB_HEIGHT(ctx->dst_fmt.height);
+		H264_MB_HEIGHT(ctx->dst_fmt.height);
 	if (ctrls->slices[0].flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
 		addr += 32 * H264_MB_WIDTH(ctx->dst_fmt.width) *
-			   H264_MB_HEIGHT(ctx->dst_fmt.height);
+			H264_MB_HEIGHT(ctx->dst_fmt.height);
 	vdpu_write_relaxed(vpu, addr, G1_REG_DIR_MV_BASE);
 
 	vdpu_write_relaxed(vpu, hantro_h264_get_ref_dma_addr(ctx, 0), G1_REG_REFER0_BASE);
