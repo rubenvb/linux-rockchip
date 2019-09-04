@@ -4269,12 +4269,12 @@ int drm_edid_to_sad(struct edid *edid, struct cea_sad **sads)
 	cea = drm_find_cea_extension(edid);
 	if (!cea) {
 		DRM_DEBUG_KMS("SAD: no CEA Extension found\n");
-		return -ENOENT;
+		return 0;
 	}
 
 	if (cea_revision(cea) < 3) {
 		DRM_DEBUG_KMS("SAD: wrong CEA revision\n");
-		return -ENOTSUPP;
+		return 0;
 	}
 
 	if (cea_db_offsets(cea, &start, &end)) {
@@ -4330,12 +4330,12 @@ int drm_edid_to_speaker_allocation(struct edid *edid, u8 **sadb)
 	cea = drm_find_cea_extension(edid);
 	if (!cea) {
 		DRM_DEBUG_KMS("SAD: no CEA Extension found\n");
-		return -ENOENT;
+		return 0;
 	}
 
 	if (cea_revision(cea) < 3) {
 		DRM_DEBUG_KMS("SAD: wrong CEA revision\n");
-		return -ENOTSUPP;
+		return 0;
 	}
 
 	if (cea_db_offsets(cea, &start, &end)) {
