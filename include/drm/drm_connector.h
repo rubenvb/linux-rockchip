@@ -1288,6 +1288,9 @@ struct drm_connector {
 	/** @override_edid: has the EDID been overwritten through debugfs for testing? */
 	bool override_edid;
 
+	/** @epoch_counter: used to detect any other changes in connector, besides status */
+	uint64_t epoch_counter;
+
 #define DRM_CONNECTOR_MAX_ENCODER 3
 	/**
 	 * @encoder_ids: Valid encoders for this connector. Please only use
