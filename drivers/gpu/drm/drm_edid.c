@@ -1309,6 +1309,37 @@ static const struct drm_display_mode edid_4k_modes[] = {
 	  .vrefresh = 24, },
 };
 
+/*
+ * 4k modes of HDMI 1.4 defined in HDMI 2.0. Index using the VIC.
+ */
+static const struct drm_display_mode hdmi_1_4_edid_4k_modes[] = {
+	/* 0 - dummy, VICs start at 1 */
+	{ },
+	/* 1 - 3840x2160@30Hz */
+	{ DRM_MODE("3840x2160", DRM_MODE_TYPE_DRIVER, 297000,
+		   3840, 4016, 4104, 4400, 0,
+		   2160, 2168, 2178, 2250, 0,
+		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 30, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
+	/* 2 - 3840x2160@25Hz */
+	{ DRM_MODE("3840x2160", DRM_MODE_TYPE_DRIVER, 297000,
+		   3840, 4896, 4984, 5280, 0,
+		   2160, 2168, 2178, 2250, 0,
+		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 25, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
+	/* 3 - 3840x2160@24Hz */
+	{ DRM_MODE("3840x2160", DRM_MODE_TYPE_DRIVER, 297000,
+		   3840, 5116, 5204, 5500, 0,
+		   2160, 2168, 2178, 2250, 0,
+		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 24, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9, },
+	/* 4 - 4096x2160@24Hz (SMPTE) */
+	{ DRM_MODE("4096x2160", DRM_MODE_TYPE_DRIVER, 297000,
+		   4096, 5116, 5204, 5500, 0,
+		   2160, 2168, 2178, 2250, 0,
+		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .vrefresh = 24, .picture_aspect_ratio = HDMI_PICTURE_ASPECT_256_135, },
+};
 /*** DDC fetch and block validation ***/
 
 static const u8 edid_header[] = {
@@ -3135,6 +3166,19 @@ hdmi_mode_alternate_clock(const struct drm_display_mode *hdmi_mode)
 	return cea_mode_alternate_clock(hdmi_mode);
 }
 
+/*
+ * Calculate the alternate clock for HDMI modes (those from the HDMI vendor
+ * specific block).
+ *
+ * It's almost like hdmi_mode_alternate_clock(), but no exception for VIC 4 mode.
+ * There is an alternate clock (23.98Hz) of VIC 4 mode (4096x2160@24Hz) in HDMI 2.0
+ */
+static unsigned int
+hdmi_1_4_mode_alternate_clock(const struct drm_display_mode *hdmi_mode)
+{
+	return cea_mode_alternate_clock(hdmi_mode);
+}
+
 static u8 drm_match_hdmi_mode_clock_tolerance(const struct drm_display_mode *to_match,
 					      unsigned int clock_tolerance)
 {
@@ -3195,9 +3239,51 @@ static u8 drm_match_hdmi_mode(const struct drm_display_mode *to_match)
 	return 0;
 }
 
+/*
+ * drm_match_hdmi_1_4_mode - look for a HDMI 1.4 mode matching given mode
+ * @to_match: display mode
+ *
+ * An HDMI mode is one defined in the HDMI vendor specific block.
+ * In HDMI 2.0, only few 4k resolutions with specific aspect ratio should
+ * utilize H14b VSIF.
+ *
+ * Returns the HDMI Video ID (VIC) of the mode or 0 if it isn't one.
+ */
+static u8 drm_match_hdmi_1_4_mode(const struct drm_display_mode *to_match)
+{
+	unsigned int match_flags = DRM_MODE_MATCH_TIMINGS | DRM_MODE_MATCH_FLAGS;
+	u8 vic;
+
+	if (!to_match->clock)
+		return 0;
+
+	if (to_match->picture_aspect_ratio)
+		match_flags |= DRM_MODE_MATCH_ASPECT_RATIO;
+
+	for (vic = 1; vic < ARRAY_SIZE(hdmi_1_4_edid_4k_modes); vic++) {
+		const struct drm_display_mode *hdmi_1_4_mode = &hdmi_1_4_edid_4k_modes[vic];
+		unsigned int clock1, clock2;
+
+		/* Make sure to also match alternate clocks */
+		clock1 = hdmi_1_4_mode->clock;
+		clock2 = hdmi_1_4_mode_alternate_clock(hdmi_1_4_mode);
+
+		if ((KHZ2PICOS(to_match->clock) == KHZ2PICOS(clock1) ||
+		     KHZ2PICOS(to_match->clock) == KHZ2PICOS(clock2)) &&
+		    drm_mode_match(to_match, hdmi_1_4_mode, match_flags))
+			return vic;
+	}
+	return 0;
+}
+
 static bool drm_valid_hdmi_vic(u8 vic)
 {
 	return vic > 0 && vic < ARRAY_SIZE(edid_4k_modes);
+}
+
+static bool drm_valid_hdmi_1_4_vic(u8 vic)
+{
+	return vic > 0 && vic < ARRAY_SIZE(hdmi_1_4_edid_4k_modes);
 }
 
 static int
@@ -5112,10 +5198,12 @@ drm_hdmi_avi_infoframe_from_display_mode(struct hdmi_avi_infoframe *frame,
 	 * HDMI 1.4b 4K modes
 	 */
 	if (frame->video_code) {
-		u8 vendor_if_vic = drm_match_hdmi_mode(mode);
+		u8 vendor_if_vic = is_hdmi2_sink(connector) ?
+			drm_match_hdmi_1_4_mode(mode) : drm_match_hdmi_mode(mode);
 		bool is_s3d = mode->flags & DRM_MODE_FLAG_3D_MASK;
 
-		if (drm_valid_hdmi_vic(vendor_if_vic) && !is_s3d)
+		if (!is_s3d && is_hdmi2_sink(connector) ?
+			drm_valid_hdmi_1_4_vic(vendor_if_vic) : drm_valid_hdmi_vic(vendor_if_vic))
 			frame->video_code = 0;
 	}
 
@@ -5343,7 +5431,8 @@ drm_hdmi_vendor_infoframe_from_display_mode(struct hdmi_vendor_infoframe *frame,
 	if (!has_hdmi_infoframe)
 		return -EINVAL;
 
-	vic = drm_match_hdmi_mode(mode);
+	vic = is_hdmi2_sink(connector) ?
+			drm_match_hdmi_1_4_mode(mode) : drm_match_hdmi_mode(mode);
 	s3d_flags = mode->flags & DRM_MODE_FLAG_3D_MASK;
 
 	/*
