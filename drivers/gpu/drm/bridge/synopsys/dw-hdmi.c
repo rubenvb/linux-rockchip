@@ -1308,7 +1308,7 @@ static void dw_hdmi_phy_power_off(struct dw_hdmi *hdmi)
 	if (val & HDMI_PHY_TX_PHY_LOCK)
 		dev_warn(hdmi->dev, "PHY failed to power down\n");
 	else
-		dev_dbg(hdmi->dev, "PHY powered down in %u iterations\n", i);
+		dev_info(hdmi->dev, "PHY powered down in %u iterations\n", i);
 
 	dw_hdmi_phy_gen2_pddq(hdmi, 1);
 }
@@ -1345,7 +1345,7 @@ static int dw_hdmi_phy_power_on(struct dw_hdmi *hdmi)
 		return -ETIMEDOUT;
 	}
 
-	dev_dbg(hdmi->dev, "PHY PLL locked %u iterations\n", i);
+	dev_info(hdmi->dev, "PHY PLL locked %u iterations\n", i);
 	return 0;
 }
 
@@ -1720,7 +1720,7 @@ static void hdmi_av_composer(struct dw_hdmi *hdmi,
 
 	vmode->mtmdsclock = vmode->mpixelclock = mode->clock * 1000;
 
-	dev_dbg(hdmi->dev, "final pixclk = %d\n", vmode->mpixelclock);
+	dev_info(hdmi->dev, "final pixclk = %d\n", vmode->mpixelclock);
 
 	if (hdmi_bus_fmt_is_yuv420(hdmi->hdmi_data.enc_out_bus_format))
 		vmode->mtmdsclock /= 2;
@@ -1966,9 +1966,9 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	hdmi->vic = drm_match_cea_mode(mode);
 
 	if (!hdmi->vic) {
-		dev_dbg(hdmi->dev, "Non-CEA mode used in HDMI\n");
+		dev_info(hdmi->dev, "Non-CEA mode used in HDMI\n");
 	} else {
-		dev_dbg(hdmi->dev, "CEA mode used vic=%d\n", hdmi->vic);
+		dev_info(hdmi->dev, "CEA mode used vic=%d\n", hdmi->vic);
 	}
 
 	if ((hdmi->vic == 6) || (hdmi->vic == 7) ||
@@ -2016,7 +2016,7 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	dw_hdmi_enable_video_path(hdmi);
 
 	if (hdmi->sink_has_audio) {
-		dev_dbg(hdmi->dev, "sink has audio support\n");
+		dev_info(hdmi->dev, "sink has audio support\n");
 
 		/* HDMI Initialization Step E - Configure audio */
 		hdmi_clk_regenerator_update_pixel_clock(hdmi);
@@ -2025,13 +2025,13 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 
 	/* not for DVI mode */
 	if (hdmi->sink_is_hdmi) {
-		dev_dbg(hdmi->dev, "%s HDMI mode\n", __func__);
+		dev_info(hdmi->dev, "%s HDMI mode\n", __func__);
 
 		/* HDMI Initialization Step F - Configure AVI InfoFrame */
 		hdmi_config_AVI(hdmi, mode);
 		hdmi_config_vendor_specific_infoframe(hdmi, mode);
 	} else {
-		dev_dbg(hdmi->dev, "%s DVI mode\n", __func__);
+		dev_info(hdmi->dev, "%s DVI mode\n", __func__);
 	}
 
 	hdmi_video_packetize(hdmi);
@@ -2179,7 +2179,7 @@ static bool dw_hdmi_get_edid(struct drm_connector *connector)
 
 	hdmi->detect_edid = edid;
 	if (edid) {
-		dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
+		dev_info(hdmi->dev, "got edid: width[%d] x height[%d]\n",
 			edid->width_cm, edid->height_cm);
 
 		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
@@ -2187,7 +2187,7 @@ static bool dw_hdmi_get_edid(struct drm_connector *connector)
 
 		connected = true;
 	} else {
-		dev_dbg(hdmi->dev, "failed to get edid\n");
+		dev_info(hdmi->dev, "failed to get edid\n");
 	}
 
 	drm_connector_update_edid_property(connector, edid);
@@ -2205,6 +2205,9 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	enum drm_connector_status status = connector_status_disconnected;
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
+
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
+		      connector->base.id, connector->name);
 
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = DRM_FORCE_UNSPECIFIED;
@@ -2231,6 +2234,9 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
 
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
+		      connector->base.id, connector->name);
+
 	return drm_add_edid_modes(connector, hdmi->detect_edid);
 }
 
@@ -2238,6 +2244,9 @@ static void dw_hdmi_connector_force(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
+
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
+		      connector->base.id, connector->name);
 
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = connector->force;
@@ -2275,6 +2284,8 @@ static int dw_hdmi_bridge_attach(struct drm_bridge *bridge)
 	struct cec_connector_info conn_info;
 	struct cec_notifier *notifier;
 
+	dev_info(hdmi->dev, "dw_hdmi_bridge_attach\n");
+
 	connector->interlace_allowed = 1;
 	connector->polled = DRM_CONNECTOR_POLL_HPD;
 
@@ -2301,6 +2312,8 @@ static int dw_hdmi_bridge_attach(struct drm_bridge *bridge)
 static void dw_hdmi_bridge_detach(struct drm_bridge *bridge)
 {
 	struct dw_hdmi *hdmi = bridge->driver_private;
+
+	dev_info(hdmi->dev, "dw_hdmi_bridge_detach\n");
 
 	cec_notifier_conn_unregister(hdmi->cec_notifier);
 	hdmi->cec_notifier = NULL;
@@ -2345,6 +2358,8 @@ static void dw_hdmi_bridge_disable(struct drm_bridge *bridge)
 {
 	struct dw_hdmi *hdmi = bridge->driver_private;
 
+	dev_info(hdmi->dev, "dw_hdmi_bridge_disable\n");
+
 	mutex_lock(&hdmi->mutex);
 	hdmi->disabled = true;
 	dw_hdmi_update_power(hdmi);
@@ -2355,6 +2370,8 @@ static void dw_hdmi_bridge_disable(struct drm_bridge *bridge)
 static void dw_hdmi_bridge_enable(struct drm_bridge *bridge)
 {
 	struct dw_hdmi *hdmi = bridge->driver_private;
+
+	dev_info(hdmi->dev, "dw_hdmi_bridge_enable\n");
 
 	mutex_lock(&hdmi->mutex);
 	hdmi->disabled = false;
@@ -2474,7 +2491,7 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
 				       phy_stat & HDMI_PHY_RX_SENSE);
 
 	if (intr_stat & HDMI_IH_PHY_STAT0_HPD) {
-		dev_dbg(hdmi->dev, "EVENT=%s\n",
+		dev_info(hdmi->dev, "EVENT=%s\n",
 			phy_int_pol & HDMI_PHY_HPD ? "plugin" : "plugout");
 		if (hdmi->bridge.dev)
 			drm_helper_hpd_irq_event(hdmi->bridge.dev);
