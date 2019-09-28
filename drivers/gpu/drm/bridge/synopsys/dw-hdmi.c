@@ -2192,6 +2192,8 @@ static bool dw_hdmi_get_edid(struct drm_connector *connector)
 
 	drm_connector_update_edid_property(connector, edid);
 
+	drm_edid_to_eld(connector, edid);
+
 	cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
 
 	return connected;
