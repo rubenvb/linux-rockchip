@@ -2124,17 +2124,20 @@ static bool dw_hdmi_get_edid(struct drm_connector *connector)
 
 	edid = drm_get_edid(connector, hdmi->ddc);
 
-	hdmi->cached_edid = edid;
-	if (edid) {
+	if (edid && edid->input & DRM_EDID_INPUT_DIGITAL) {
 		dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
 			edid->width_cm, edid->height_cm);
 
 		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
 		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
 
+		hdmi->cached_edid = edid;
 		connected = true;
 	} else {
 		dev_dbg(hdmi->dev, "failed to get edid\n");
+
+		kfree(edid);
+		edid = NULL;
 	}
 
 	drm_connector_update_edid_property(connector, edid);
