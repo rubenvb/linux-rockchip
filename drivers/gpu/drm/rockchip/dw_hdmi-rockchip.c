@@ -308,9 +308,11 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 	s->output_mode = ROCKCHIP_OUT_MODE_AAAA;
 	s->output_type = DRM_MODE_CONNECTOR_HDMIA;
 	s->output_bpc = 10;
+	s->bus_format = format;
 
 	switch (format) {
 		case MEDIA_BUS_FMT_RGB101010_1X30:
+		case MEDIA_BUS_FMT_YUV10_1X30:
 			bus_width = 10;
 			break;
 		default:
@@ -345,6 +347,8 @@ static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
 	switch (output_fmt) {
 		case MEDIA_BUS_FMT_RGB101010_1X30:
 		case MEDIA_BUS_FMT_RGB888_1X24:
+		case MEDIA_BUS_FMT_YUV10_1X30:
+		case MEDIA_BUS_FMT_YUV8_1X24:
 			input_fmts[i++] = output_fmt;
 			break;
 	}
