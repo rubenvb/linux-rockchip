@@ -2370,25 +2370,6 @@ static const struct drm_connector_helper_funcs dw_hdmi_connector_helper_funcs = 
 	.atomic_check = dw_hdmi_connector_atomic_check,
 };
 
-/* All possible output bus formats */
-static const u32 dw_hdmi_out_fmts[] = {
-	MEDIA_BUS_FMT_UYYVYY16_0_5X48,
-	MEDIA_BUS_FMT_UYYVYY12_0_5X36,
-	MEDIA_BUS_FMT_UYYVYY10_0_5X30,
-	MEDIA_BUS_FMT_UYYVYY8_0_5X24,
-	MEDIA_BUS_FMT_YUV16_1X48,
-	MEDIA_BUS_FMT_RGB161616_1X48,
-	MEDIA_BUS_FMT_UYVY12_1X24,
-	MEDIA_BUS_FMT_YUV12_1X36,
-	MEDIA_BUS_FMT_RGB121212_1X36,
-	MEDIA_BUS_FMT_UYVY10_1X20,
-	MEDIA_BUS_FMT_YUV10_1X30,
-	MEDIA_BUS_FMT_RGB101010_1X30,
-	MEDIA_BUS_FMT_UYVY8_1X16,
-	MEDIA_BUS_FMT_YUV8_1X24,
-	MEDIA_BUS_FMT_RGB888_1X24,
-};
-
 /* All possible input bus formats */
 static const u32 dw_hdmi_in_fmts[] = {
 	MEDIA_BUS_FMT_RGB888_1X24,
@@ -2421,8 +2402,9 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 	u32 *output_fmts;
 	int i = 0;
 
-	output_fmts = kcalloc(ARRAY_SIZE(dw_hdmi_out_fmts),
-			      sizeof(*output_fmts), GFP_KERNEL);
+	*num_output_fmts = 0;
+
+	output_fmts = kcalloc(12, sizeof(*output_fmts), GFP_KERNEL);
 	if (!output_fmts)
 		return NULL;
 
