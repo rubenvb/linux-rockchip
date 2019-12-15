@@ -2397,6 +2397,7 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 	struct drm_display_info *info = &conn->display_info;
 	struct drm_display_mode *mode = &crtc_state->mode;
 	bool is_hdmi2_sink = info->hdmi.scdc.supported;
+	u8 max_bpc = conn_state->max_requested_bpc;
 	u32 *output_fmts;
 	int i = 0;
 
@@ -2414,15 +2415,15 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 	    (!is_hdmi2_sink && drm_mode_is_420_also(info, mode))) {
 
 		/* Order bus formats from 16bit to 8bit if supported */
-		if (info->bpc == 16 &&
+		if (max_bpc >= 16 && info->bpc == 16 &&
 		    (info->hdmi.y420_dc_modes & DRM_EDID_YCBCR420_DC_48))
 			output_fmts[i++] = MEDIA_BUS_FMT_UYYVYY16_0_5X48;
 
-		if (info->bpc >= 12 &&
+		if (max_bpc >= 12 && info->bpc >= 12 &&
 		    (info->hdmi.y420_dc_modes & DRM_EDID_YCBCR420_DC_36))
 			output_fmts[i++] = MEDIA_BUS_FMT_UYYVYY12_0_5X36;
 
-		if (info->bpc >= 10 &&
+		if (max_bpc >= 10 && info->bpc >= 10 &&
 		    (info->hdmi.y420_dc_modes & DRM_EDID_YCBCR420_DC_30))
 			output_fmts[i++] = MEDIA_BUS_FMT_UYYVYY10_0_5X30;
 
@@ -2439,14 +2440,14 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 	 * if supported. In any case the default RGB888 format is added
 	 */
 
-	if (info->bpc == 16) {
+	if (max_bpc >= 16 && info->bpc == 16) {
 		if (info->color_formats & DRM_COLOR_FORMAT_YCRCB444)
 			output_fmts[i++] = MEDIA_BUS_FMT_YUV16_1X48;
 
 		output_fmts[i++] = MEDIA_BUS_FMT_RGB161616_1X48;
 	}
 
-	if (info->bpc >= 12) {
+	if (max_bpc >= 12 && info->bpc >= 12) {
 		if (info->color_formats & DRM_COLOR_FORMAT_YCRCB422)
 				output_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
 
@@ -2456,7 +2457,7 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 		output_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
 	}
 
-	if (info->bpc >= 10) {
+	if (max_bpc >= 10 && info->bpc >= 10) {
 		if (info->color_formats & DRM_COLOR_FORMAT_YCRCB422)
 			output_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
 
@@ -2614,6 +2615,10 @@ static int dw_hdmi_bridge_attach(struct drm_bridge *bridge)
 				    &dw_hdmi_connector_funcs,
 				    DRM_MODE_CONNECTOR_HDMIA,
 				    hdmi->ddc);
+
+	drm_atomic_helper_connector_reset(connector);
+
+	drm_connector_attach_max_bpc_property(connector, 8, 16);
 
 	if (hdmi->version >= 0x200a && hdmi->plat_data->use_drm_infoframe)
 		drm_object_attach_property(&connector->base,
