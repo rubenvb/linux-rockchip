@@ -290,9 +290,25 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 				     struct drm_connector_state *conn_state)
 {
 	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
+	u32 format = bridge_state->output_bus_cfg.format;
+	int bus_width;
 
 	s->output_mode = ROCKCHIP_OUT_MODE_AAAA;
 	s->output_type = DRM_MODE_CONNECTOR_HDMIA;
+	s->output_bpc = 10;
+
+	switch (format) {
+		case MEDIA_BUS_FMT_RGB101010_1X30:
+			bus_width = 10;
+			break;
+		default:
+			bus_width = 8;
+			break;
+	}
+
+	// HACK: must be done before inno_hdmi_phy clk_set_rate call
+	if (hdmi->phy)
+		phy_set_bus_width(hdmi->phy, bus_width);
 
 	return 0;
 }
@@ -315,6 +331,7 @@ static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
 		return NULL;
 
 	switch (output_fmt) {
+		case MEDIA_BUS_FMT_RGB101010_1X30:
 		case MEDIA_BUS_FMT_RGB888_1X24:
 			input_fmts[i++] = output_fmt;
 			break;
@@ -341,6 +358,8 @@ static int dw_hdmi_rockchip_genphy_init(struct dw_hdmi *dw_hdmi, void *data,
 			     struct drm_display_mode *mode)
 {
 	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
+
+	dw_hdmi_set_high_tmds_clock_ratio(dw_hdmi);
 
 	return phy_power_on(hdmi->phy);
 }
