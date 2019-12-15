@@ -590,11 +590,11 @@ unsigned long inno_hdmi_phy_rk3228_clk_recalc_rate(struct clk_hw *hw,
 		do_div(vco, (nd * (no_a == 1 ? no_b : no_a) * no_d * 2));
 	}
 
-	inno->pixclock = vco;
+	inno->pixclock = DIV_ROUND_CLOSEST((unsigned long)vco, 1000) * 1000;
 
-	dev_dbg(inno->dev, "%s rate %lu\n", __func__, inno->pixclock);
+	dev_dbg(inno->dev, "%s rate %lu vco %llu\n", __func__, inno->pixclock, vco);
 
-	return vco;
+	return inno->pixclock;
 }
 
 static long inno_hdmi_phy_rk3228_clk_round_rate(struct clk_hw *hw,
@@ -712,7 +712,7 @@ unsigned long inno_hdmi_phy_rk3328_clk_recalc_rate(struct clk_hw *hw,
 {
 	struct inno_hdmi_phy *inno = to_inno_hdmi_phy(hw);
 	unsigned long frac;
-	u8 nd, no_a, no_b, no_c, no_d;
+	u8 nd, no_a, no_b, no_d;
 	u64 vco;
 	u16 nf;
 
@@ -735,18 +735,16 @@ unsigned long inno_hdmi_phy_rk3328_clk_recalc_rate(struct clk_hw *hw,
 		no_b = inno_read(inno, 0xa5) & RK3328_PRE_PLL_PCLK_DIV_B_MASK;
 		no_b >>= RK3328_PRE_PLL_PCLK_DIV_B_SHIFT;
 		no_b += 2;
-		no_c = inno_read(inno, 0xa6) & RK3328_PRE_PLL_PCLK_DIV_C_MASK;
-		no_c >>= RK3328_PRE_PLL_PCLK_DIV_C_SHIFT;
-		no_c = 1 << no_c;
 		no_d = inno_read(inno, 0xa6) & RK3328_PRE_PLL_PCLK_DIV_D_MASK;
 
 		do_div(vco, (nd * (no_a == 1 ? no_b : no_a) * no_d * 2));
 	}
 
-	inno->pixclock = vco;
-	dev_dbg(inno->dev, "%s rate %lu\n", __func__, inno->pixclock);
+	inno->pixclock = DIV_ROUND_CLOSEST((unsigned long)vco, 1000) * 1000;
 
-	return vco;
+	dev_dbg(inno->dev, "%s rate %lu vco %llu\n", __func__, inno->pixclock, vco);
+
+	return inno->pixclock;
 }
 
 static long inno_hdmi_phy_rk3328_clk_round_rate(struct clk_hw *hw,
@@ -1010,6 +1008,7 @@ inno_hdmi_phy_rk3328_power_on(struct inno_hdmi_phy *inno,
 {
 	int ret;
 	u32 v;
+	u64 temp;
 
 	inno_update_bits(inno, 0x02, RK3328_PDATA_EN, 0);
 	inno_update_bits(inno, 0xaa, RK3328_POST_PLL_POWER_DOWN,
@@ -1063,6 +1062,12 @@ inno_hdmi_phy_rk3328_power_on(struct inno_hdmi_phy *inno,
 					 RK3328_TMDS_TERM_RESIST_MASK,
 					 RK3328_TMDS_TERM_RESIST_150);
 	}
+
+	/* set TMDS sync detection counter length */
+	temp = 47520000000;
+	do_div(temp, phy_cfg->tmdsclock);
+	inno_write(inno, 0xd8, (temp >> 8) & 0xff);
+	inno_write(inno, 0xd9, temp & 0xff);
 
 	inno_update_bits(inno, 0xaa, RK3328_POST_PLL_POWER_DOWN, 0);
 	inno_update_bits(inno, 0xb0, RK3328_BANDGAP_ENABLE,
