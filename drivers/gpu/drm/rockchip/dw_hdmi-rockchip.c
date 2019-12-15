@@ -297,10 +297,44 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 	return 0;
 }
 
+static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
+					struct drm_bridge_state *bridge_state,
+					struct drm_crtc_state *crtc_state,
+					struct drm_connector_state *conn_state,
+					u32 output_fmt,
+					unsigned int *num_input_fmts)
+{
+	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(bridge);
+	u32 *input_fmts;
+	int i = 0;
+
+	*num_input_fmts = 0;
+
+	input_fmts = kcalloc(2, sizeof(*input_fmts), GFP_KERNEL);
+	if (!input_fmts)
+		return NULL;
+
+	switch (output_fmt) {
+		case MEDIA_BUS_FMT_RGB888_1X24:
+			input_fmts[i++] = output_fmt;
+			break;
+	}
+
+	*num_input_fmts = i;
+
+	if (*num_input_fmts == 0) {
+		kfree(input_fmts);
+		input_fmts = NULL;
+	}
+
+	return input_fmts;
+}
+
 static const struct drm_bridge_funcs dw_hdmi_rockchip_bridge_funcs = {
 	.mode_set = dw_hdmi_rockchip_bridge_mode_set,
 	.enable = dw_hdmi_rockchip_bridge_enable,
 	.atomic_check = dw_hdmi_rockchip_bridge_atomic_check,
+	.atomic_get_input_bus_fmts = dw_hdmi_rockchip_get_input_bus_fmts,
 };
 
 static int dw_hdmi_rockchip_genphy_init(struct dw_hdmi *dw_hdmi, void *data,
