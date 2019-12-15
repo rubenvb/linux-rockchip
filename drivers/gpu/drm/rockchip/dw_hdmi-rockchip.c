@@ -242,7 +242,13 @@ static enum drm_mode_status
 dw_hdmi_rk3228_mode_valid(struct drm_connector *connector,
 			  const struct drm_display_mode *mode)
 {
+	struct drm_display_info *info = &connector->display_info;
+	bool is_hdmi2_sink = info->color_formats & DRM_COLOR_FORMAT_YCRCB420;
 	int clock = mode->clock;
+
+	if (connector->ycbcr_420_allowed && (drm_mode_is_420_only(info, mode) ||
+	    (is_hdmi2_sink && drm_mode_is_420_also(info, mode))))
+		clock /= 2;
 
 	if (clock > 340000)
 		return MODE_CLOCK_HIGH;
@@ -311,12 +317,21 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 	s->bus_format = format;
 
 	switch (format) {
+		case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
 		case MEDIA_BUS_FMT_RGB101010_1X30:
 		case MEDIA_BUS_FMT_YUV10_1X30:
 			bus_width = 10;
 			break;
 		default:
 			bus_width = 8;
+			break;
+	}
+
+	switch (format) {
+		case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
+		case MEDIA_BUS_FMT_UYYVYY8_0_5X24:
+			s->output_mode = ROCKCHIP_OUT_MODE_YUV420;
+			bus_width /= 2;
 			break;
 	}
 
@@ -345,6 +360,8 @@ static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
 		return NULL;
 
 	switch (output_fmt) {
+		case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
+		case MEDIA_BUS_FMT_UYYVYY8_0_5X24:
 		case MEDIA_BUS_FMT_RGB101010_1X30:
 		case MEDIA_BUS_FMT_RGB888_1X24:
 		case MEDIA_BUS_FMT_YUV10_1X30:
@@ -504,6 +521,7 @@ static const struct dw_hdmi_plat_data rk3328_hdmi_drv_data = {
 	.phy_name = "inno_dw_hdmi_phy2",
 	.phy_force_vendor = true,
 	.use_drm_infoframe = true,
+	.ycbcr_420_allowed = true,
 };
 
 static struct rockchip_hdmi_chip_data rk3399_chip_data = {
