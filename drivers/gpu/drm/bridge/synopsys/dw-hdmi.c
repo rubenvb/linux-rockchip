@@ -2370,25 +2370,6 @@ static const struct drm_connector_helper_funcs dw_hdmi_connector_helper_funcs = 
 	.atomic_check = dw_hdmi_connector_atomic_check,
 };
 
-/* All possible input bus formats */
-static const u32 dw_hdmi_in_fmts[] = {
-	MEDIA_BUS_FMT_RGB888_1X24,
-	MEDIA_BUS_FMT_YUV8_1X24,
-	MEDIA_BUS_FMT_UYVY8_1X16,
-	MEDIA_BUS_FMT_UYYVYY8_0_5X24,
-	MEDIA_BUS_FMT_RGB101010_1X30,
-	MEDIA_BUS_FMT_YUV10_1X30,
-	MEDIA_BUS_FMT_UYVY10_1X20,
-	MEDIA_BUS_FMT_UYYVYY10_0_5X30,
-	MEDIA_BUS_FMT_RGB121212_1X36,
-	MEDIA_BUS_FMT_YUV12_1X36,
-	MEDIA_BUS_FMT_UYVY12_1X24,
-	MEDIA_BUS_FMT_UYYVYY12_0_5X36,
-	MEDIA_BUS_FMT_RGB161616_1X48,
-	MEDIA_BUS_FMT_YUV16_1X48,
-	MEDIA_BUS_FMT_UYYVYY16_0_5X48,
-};
-
 static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 					struct drm_bridge_state *bridge_state,
 					struct drm_crtc_state *crtc_state,
@@ -2492,8 +2473,9 @@ static u32 *dw_hdmi_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	u32 *input_fmts;
 	int i = 0;
 
-	input_fmts = kcalloc(ARRAY_SIZE(dw_hdmi_in_fmts),
-			     sizeof(*input_fmts), GFP_KERNEL);
+	*num_input_fmts = 0;
+
+	input_fmts = kcalloc(4, sizeof(*input_fmts), GFP_KERNEL);
 	if (!input_fmts)
 		return NULL;
 
@@ -2501,52 +2483,79 @@ static u32 *dw_hdmi_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 		/* 8bit */
 		case MEDIA_BUS_FMT_RGB888_1X24:
 			input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
-			/* Falls through. */
+			input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
+			break;
 		case MEDIA_BUS_FMT_YUV8_1X24:
 			input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
 			break;
 		case MEDIA_BUS_FMT_UYVY8_1X16:
-		case MEDIA_BUS_FMT_UYYVYY8_0_5X24:
-			input_fmts[i++] = output_fmt;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
+			input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
 			break;
 
 		/* 10bit */
 		case MEDIA_BUS_FMT_RGB101010_1X30:
-			input_fmts[i++] = output_fmt;
-			/* Falls through. */
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
+			input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
+			break;
 		case MEDIA_BUS_FMT_YUV10_1X30:
 			input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
 			break;
 		case MEDIA_BUS_FMT_UYVY10_1X20:
-		case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
-			input_fmts[i++] = output_fmt;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
+			input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
 			break;
 
 		/* 12bit */
 		case MEDIA_BUS_FMT_RGB121212_1X36:
-			input_fmts[i++] = output_fmt;
-			/* Falls through. */
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
+			input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
+			break;
 		case MEDIA_BUS_FMT_YUV12_1X36:
 			input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
 			break;
 		case MEDIA_BUS_FMT_UYVY12_1X24:
-		case MEDIA_BUS_FMT_UYYVYY12_0_5X36:
-			input_fmts[i++] = output_fmt;
+			input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
+			input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
 			break;
 
 		/* 16bit */
 		case MEDIA_BUS_FMT_RGB161616_1X48:
-			input_fmts[i++] = output_fmt;
-			/* Falls through. */
-		case MEDIA_BUS_FMT_YUV16_1X48:
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB161616_1X48;
 			input_fmts[i++] = MEDIA_BUS_FMT_YUV16_1X48;
 			break;
+		case MEDIA_BUS_FMT_YUV16_1X48:
+			input_fmts[i++] = MEDIA_BUS_FMT_YUV16_1X48;
+			input_fmts[i++] = MEDIA_BUS_FMT_RGB161616_1X48;
+			break;
+
+		/* 420 */
+		case MEDIA_BUS_FMT_UYYVYY8_0_5X24:
+		case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
+		case MEDIA_BUS_FMT_UYYVYY12_0_5X36:
 		case MEDIA_BUS_FMT_UYYVYY16_0_5X48:
 			input_fmts[i++] = output_fmt;
 			break;
 	}
 
 	*num_input_fmts = i;
+
+	if (*num_input_fmts == 0) {
+		kfree(input_fmts);
+		input_fmts = NULL;
+	}
 
 	return input_fmts;
 }
