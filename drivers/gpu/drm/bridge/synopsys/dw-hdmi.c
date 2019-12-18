@@ -2118,15 +2118,6 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	/* HDMI Initialization Step B.1 */
 	hdmi_av_composer(hdmi, mode);
 
-	/* HDMI Initializateion Step B.2 */
-	ret = hdmi->phy.ops->init(hdmi, hdmi->phy.data, &hdmi->previous_mode);
-	if (ret)
-		return ret;
-	hdmi->phy.enabled = true;
-
-	/* HDMI Initialization Step B.3 */
-	dw_hdmi_enable_video_path(hdmi);
-
 	if (hdmi->sink_has_audio) {
 		dev_dbg(hdmi->dev, "sink has audio support\n");
 
@@ -2151,6 +2142,15 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	hdmi_video_csc(hdmi);
 	hdmi_video_sample(hdmi);
 	hdmi_tx_hdcp_config(hdmi);
+
+	/* HDMI Initializateion Step B.2 */
+	ret = hdmi->phy.ops->init(hdmi, hdmi->phy.data, &hdmi->previous_mode);
+	if (ret)
+		return ret;
+	hdmi->phy.enabled = true;
+
+	/* HDMI Initialization Step B.3 */
+	dw_hdmi_enable_video_path(hdmi);
 
 	dw_hdmi_clear_overflow(hdmi);
 
@@ -2212,10 +2212,15 @@ static void dw_hdmi_poweron(struct dw_hdmi *hdmi)
 {
 	hdmi->bridge_is_on = true;
 	dw_hdmi_setup(hdmi, &hdmi->previous_mode);
+
+	hdmi_writeb(hdmi, HDMI_FC_GCP_CLEAR_AVMUTE, HDMI_FC_GCP);
 }
 
 static void dw_hdmi_poweroff(struct dw_hdmi *hdmi)
 {
+	hdmi_writeb(hdmi, HDMI_FC_GCP_SET_AVMUTE, HDMI_FC_GCP);
+	msleep(50);
+
 	if (hdmi->phy.enabled) {
 		hdmi->phy.ops->disable(hdmi, hdmi->phy.data);
 		hdmi->phy.enabled = false;
