@@ -1021,7 +1021,6 @@ inno_hdmi_phy_rk3328_power_on(struct inno_hdmi_phy *inno,
 {
 	int ret;
 	u32 v;
-	u64 temp;
 
 	inno_update_bits(inno, 0x02, RK3328_PDATA_EN, 0);
 	inno_update_bits(inno, 0xaa, RK3328_POST_PLL_POWER_DOWN,
@@ -1075,12 +1074,6 @@ inno_hdmi_phy_rk3328_power_on(struct inno_hdmi_phy *inno,
 					 RK3328_TMDS_TERM_RESIST_MASK,
 					 RK3328_TMDS_TERM_RESIST_150);
 	}
-
-	/* set TMDS sync detection counter length */
-	temp = 47520000000;
-	do_div(temp, phy_cfg->tmdsclock);
-	inno_write(inno, 0xd8, (temp >> 8) & 0xff);
-	inno_write(inno, 0xd9, temp & 0xff);
 
 	inno_update_bits(inno, 0xaa, RK3328_POST_PLL_POWER_DOWN, 0);
 	inno_update_bits(inno, 0xb0, RK3328_BANDGAP_ENABLE,
