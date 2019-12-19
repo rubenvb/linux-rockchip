@@ -1036,12 +1036,36 @@ static void vop_crtc_disable_vblank(struct drm_crtc *crtc)
 	spin_unlock_irqrestore(&vop->irq_lock, flags);
 }
 
+enum drm_mode_status vop_crtc_mode_valid(struct drm_crtc *crtc,
+					 const struct drm_display_mode *mode)
+{
+	struct vop *vop = to_vop(crtc);
+	long actual, requested;
+
+	if (mode->hdisplay > 3840)
+		return MODE_BAD_HVALUE;
+
+	if (of_device_is_compatible(vop->dev->of_node, "rockchip,rk3328-vop") ||
+	    of_device_is_compatible(vop->dev->of_node, "rockchip,rk3228-vop")) {
+		requested = mode->clock * 1000;
+		actual = clk_round_rate(vop->dclk, requested);
+		if (actual != requested)
+			return MODE_CLOCK_RANGE;
+	}
+
+	return MODE_OK;
+}
+
 static bool vop_crtc_mode_fixup(struct drm_crtc *crtc,
 				const struct drm_display_mode *mode,
 				struct drm_display_mode *adjusted_mode)
 {
 	struct vop *vop = to_vop(crtc);
-	unsigned long rate;
+	long rate;
+
+	if (of_device_is_compatible(vop->dev->of_node, "rockchip,rk3328-vop") ||
+	    of_device_is_compatible(vop->dev->of_node, "rockchip,rk3228-vop"))
+		return true;
 
 	/*
 	 * Clock craziness.
@@ -1377,6 +1401,7 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
 }
 
 static const struct drm_crtc_helper_funcs vop_crtc_helper_funcs = {
+	.mode_valid = vop_crtc_mode_valid,
 	.mode_fixup = vop_crtc_mode_fixup,
 	.atomic_check = vop_crtc_atomic_check,
 	.atomic_begin = vop_crtc_atomic_begin,
