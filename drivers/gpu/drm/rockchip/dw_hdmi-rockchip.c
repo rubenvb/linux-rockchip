@@ -68,6 +68,7 @@ struct rockchip_hdmi {
 	struct device *dev;
 	struct regmap *regmap;
 	struct drm_encoder encoder;
+	struct drm_bridge bridge;
 	const struct rockchip_hdmi_chip_data *chip_data;
 	struct clk *vpll_clk;
 	struct clk *grf_clk;
@@ -228,30 +229,20 @@ dw_hdmi_rockchip_mode_valid(struct dw_hdmi *hdmi, void *data,
 	return drm_mode_validate_size(mode, 3840, 2160);
 }
 
-static void dw_hdmi_rockchip_encoder_disable(struct drm_encoder *encoder)
+static void
+dw_hdmi_rockchip_bridge_mode_set(struct drm_bridge *bridge,
+				 const struct drm_display_mode *mode,
+				 const struct drm_display_mode *adjusted_mode)
 {
+	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(bridge);
+
+	clk_set_rate(hdmi->vpll_clk, adjusted_mode->clock * 1000);
 }
 
-static bool
-dw_hdmi_rockchip_encoder_mode_fixup(struct drm_encoder *encoder,
-				    const struct drm_display_mode *mode,
-				    struct drm_display_mode *adj_mode)
+static void dw_hdmi_rockchip_bridge_enable(struct drm_bridge *bridge)
 {
-	return true;
-}
-
-static void dw_hdmi_rockchip_encoder_mode_set(struct drm_encoder *encoder,
-					      struct drm_display_mode *mode,
-					      struct drm_display_mode *adj_mode)
-{
-	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(encoder);
-
-	clk_set_rate(hdmi->vpll_clk, adj_mode->clock * 1000);
-}
-
-static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
-{
-	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(encoder);
+	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(bridge);
+	struct drm_encoder *encoder = bridge->encoder;
 	u32 val;
 	int ret;
 
@@ -280,9 +271,10 @@ static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
 }
 
 static int
-dw_hdmi_rockchip_encoder_atomic_check(struct drm_encoder *encoder,
-				      struct drm_crtc_state *crtc_state,
-				      struct drm_connector_state *conn_state)
+dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
+				     struct drm_bridge_state *bridge_state,
+				     struct drm_crtc_state *crtc_state,
+				     struct drm_connector_state *conn_state)
 {
 	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
 
@@ -292,12 +284,10 @@ dw_hdmi_rockchip_encoder_atomic_check(struct drm_encoder *encoder,
 	return 0;
 }
 
-static const struct drm_encoder_helper_funcs dw_hdmi_rockchip_encoder_helper_funcs = {
-	.mode_fixup = dw_hdmi_rockchip_encoder_mode_fixup,
-	.mode_set   = dw_hdmi_rockchip_encoder_mode_set,
-	.enable     = dw_hdmi_rockchip_encoder_enable,
-	.disable    = dw_hdmi_rockchip_encoder_disable,
-	.atomic_check = dw_hdmi_rockchip_encoder_atomic_check,
+static const struct drm_bridge_funcs dw_hdmi_rockchip_bridge_funcs = {
+	.mode_set = dw_hdmi_rockchip_bridge_mode_set,
+	.enable = dw_hdmi_rockchip_bridge_enable,
+	.atomic_check = dw_hdmi_rockchip_bridge_atomic_check,
 };
 
 static int dw_hdmi_rockchip_genphy_init(struct dw_hdmi *dw_hdmi, void *data,
@@ -476,6 +466,7 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 	struct dw_hdmi_plat_data *plat_data;
 	const struct of_device_id *match;
 	struct drm_device *drm = data;
+	struct drm_bridge *next_bridge;
 	struct drm_encoder *encoder;
 	struct rockchip_hdmi *hdmi;
 	int ret;
@@ -529,12 +520,14 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		return ret;
 	}
 
-	drm_encoder_helper_add(encoder, &dw_hdmi_rockchip_encoder_helper_funcs);
 	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
+
+	hdmi->bridge.funcs = &dw_hdmi_rockchip_bridge_funcs;
+	drm_bridge_attach(encoder, &hdmi->bridge, NULL);
 
 	platform_set_drvdata(pdev, hdmi);
 
-	hdmi->hdmi = dw_hdmi_bind(pdev, encoder, plat_data);
+	hdmi->hdmi = dw_hdmi_probe(pdev, plat_data);
 
 	/*
 	 * If dw_hdmi_bind() fails we'll never call dw_hdmi_unbind(),
@@ -545,6 +538,10 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		drm_encoder_cleanup(encoder);
 		clk_disable_unprepare(hdmi->vpll_clk);
 	}
+
+	next_bridge = of_drm_find_bridge(pdev->dev.of_node);
+	if (next_bridge)
+		drm_bridge_attach(encoder, next_bridge, &hdmi->bridge);
 
 	return ret;
 }
