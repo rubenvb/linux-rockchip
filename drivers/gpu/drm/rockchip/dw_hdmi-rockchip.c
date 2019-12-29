@@ -603,6 +603,7 @@ static struct rockchip_hdmi_chip_data rk3399_chip_data = {
 	.lcdsel_grf_reg = RK3399_GRF_SOC_CON20,
 	.lcdsel_big = HIWORD_UPDATE(0, RK3399_HDMI_LCDC_SEL),
 	.lcdsel_lit = HIWORD_UPDATE(RK3399_HDMI_LCDC_SEL, RK3399_HDMI_LCDC_SEL),
+	.ycbcr_444_allowed = true,
 };
 
 static const struct dw_hdmi_plat_data rk3399_hdmi_drv_data = {
@@ -612,6 +613,7 @@ static const struct dw_hdmi_plat_data rk3399_hdmi_drv_data = {
 	.phy_config = rockchip_phy_config,
 	.phy_data = &rk3399_chip_data,
 	.use_drm_infoframe = true,
+	.ycbcr_420_allowed = true,
 };
 
 static const struct of_device_id dw_hdmi_rockchip_dt_ids[] = {
