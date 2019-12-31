@@ -908,6 +908,10 @@ static const struct vop_output rk3328_output = {
 
 static const struct vop_misc rk3328_misc = {
 	.global_regdone_en = VOP_REG(RK3328_SYS_CTRL, 0x1, 11),
+
+	.win_channel[0] = VOP_REG(RK3328_WIN0_CTRL2, 0xff, 0),
+	.win_channel[1] = VOP_REG(RK3328_WIN1_CTRL2, 0xff, 0),
+	.win_channel[2] = VOP_REG(RK3328_WIN2_CTRL2, 0xff, 0),
 };
 
 static const struct vop_common rk3328_common = {

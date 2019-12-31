@@ -1869,6 +1869,9 @@ static int vop_initial(struct vop *vop)
 		vop->regsbak[i / 4] = readl_relaxed(vop->regs + i);
 
 	VOP_REG_SET(vop, misc, global_regdone_en, 1);
+	VOP_REG_SET(vop, misc, win_channel[0], 0x12);
+	VOP_REG_SET(vop, misc, win_channel[1], 0x34);
+	VOP_REG_SET(vop, misc, win_channel[2], 0x56);
 	VOP_REG_SET(vop, common, dsp_blank, 0);
 
 	for (i = 0; i < vop->data->win_size; i++) {
