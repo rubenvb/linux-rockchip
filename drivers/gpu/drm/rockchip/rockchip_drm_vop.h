@@ -87,6 +87,7 @@ struct vop_common {
 
 struct vop_misc {
 	struct vop_reg global_regdone_en;
+	struct vop_reg win_channel[4];
 };
 
 struct vop_intr {
