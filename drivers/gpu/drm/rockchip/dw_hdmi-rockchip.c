@@ -224,6 +224,12 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 	int max_tmds_clock = max(info->max_tmds_clock, 165000);
 	int clock = mode->clock;
 
+	if (mode->hdisplay > 3840)
+		return MODE_VIRTUAL_X;
+
+	if (mode->vdisplay > 2160)
+		return MODE_VIRTUAL_Y;
+
 	if (connector->ycbcr_420_allowed && drm_mode_is_420(info, mode) &&
 	    (info->color_formats & DRM_COLOR_FORMAT_YCRCB420))
 		clock /= 2;
