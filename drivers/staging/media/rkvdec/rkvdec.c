@@ -156,6 +156,7 @@ static const struct rkvdec_ctrls rkvdec_vp9_ctrls = {
 
 static const u32 rkvdec_decoded_fmts[] = {
 	V4L2_PIX_FMT_NV12,
+	V4L2_PIX_FMT_NV15,
 };
 
 static const struct rkvdec_coded_fmt_desc rkvdec_coded_fmts[] = {
