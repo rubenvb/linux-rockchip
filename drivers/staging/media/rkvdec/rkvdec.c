@@ -757,6 +757,8 @@ static void rkvdec_job_finish(struct rkvdec_ctx *ctx,
 
 	pm_runtime_mark_last_busy(rkvdec->dev);
 	pm_runtime_put_autosuspend(rkvdec->dev);
+	if (result == VB2_BUF_STATE_ERROR)
+		rkvdec->soft_reset = true;
 	rkvdec_job_finish_no_pm(ctx, result);
 }
 
@@ -794,6 +796,11 @@ static void rkvdec_device_run(void *priv)
 
 	if (WARN_ON(!desc))
 		return;
+
+	if (rkvdec->soft_reset) {
+		ret = pm_runtime_suspend(rkvdec->dev);
+		rkvdec->soft_reset = false;
+	}
 
 	ret = pm_runtime_get_sync(rkvdec->dev);
 	if (ret < 0) {
@@ -1056,7 +1063,8 @@ static irqreturn_t rkvdec_irq_handler(int irq, void *priv)
 	state = (status & RKVDEC_RDY_STA) ?
 		VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR;
 
-	writel(0, rkvdec->regs + RKVDEC_REG_INTERRUPT);
+	writel(RKVDEC_CONFIG_DEC_CLK_GATE_E,
+	       rkvdec->regs + RKVDEC_REG_INTERRUPT);
 	if (cancel_delayed_work(&rkvdec->watchdog_work)) {
 		struct rkvdec_ctx *ctx;
 
@@ -1176,8 +1184,8 @@ static int rkvdec_remove(struct platform_device *pdev)
 	struct rkvdec_dev *rkvdec = platform_get_drvdata(pdev);
 
 	rkvdec_v4l2_cleanup(rkvdec);
-	pm_runtime_disable(&pdev->dev);
 	pm_runtime_dont_use_autosuspend(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 	return 0;
 }
 
