@@ -221,7 +221,6 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 			    const struct drm_display_mode *mode)
 {
 	struct drm_display_info *info = &connector->display_info;
-	int max_tmds_clock = max(info->max_tmds_clock, 165000);
 	int clock = mode->clock;
 
 	if (mode->hdisplay > 3840)
@@ -234,7 +233,8 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 	    (info->color_formats & DRM_COLOR_FORMAT_YCRCB420))
 		clock /= 2;
 
-	if (clock > max_tmds_clock || clock > 340000)
+	if (clock > 340000 ||
+	    (info->max_tmds_clock && clock > info->max_tmds_clock))
 		return MODE_CLOCK_HIGH;
 
 	return MODE_OK;
