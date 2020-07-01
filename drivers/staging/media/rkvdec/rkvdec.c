@@ -239,6 +239,14 @@ static int rkvdec_try_capture_fmt(struct file *file, void *priv,
 	if (WARN_ON(!coded_desc))
 		return -EINVAL;
 
+	if (coded_desc->ops->validate_fmt) {
+		int ret;
+
+		ret = coded_desc->ops->validate_fmt(ctx, pix_mp->pixelformat);
+		if (ret)
+			return ret;
+	}
+
 	for (i = 0; i < coded_desc->num_decoded_fmts; i++) {
 		if (coded_desc->decoded_fmts[i] == pix_mp->pixelformat)
 			break;
