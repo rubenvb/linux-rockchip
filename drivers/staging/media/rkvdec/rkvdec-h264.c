@@ -1022,6 +1022,36 @@ static int rkvdec_h264_adjust_fmt(struct rkvdec_ctx *ctx,
 	return 0;
 }
 
+static int rkvdec_h264_validate_fmt(struct rkvdec_ctx *ctx, u32 pixelformat)
+{
+	struct v4l2_ctrl *ctrl;
+	const struct v4l2_ctrl_h264_sps *sps;
+	u32 valid_format = 0;
+
+	ctrl = v4l2_ctrl_find(&ctx->ctrl_hdl,
+			      V4L2_CID_MPEG_VIDEO_H264_SPS);
+	sps = ctrl ? ctrl->p_cur.p : NULL;
+	if (!sps)
+		return 0;
+
+	if (sps->bit_depth_luma_minus8 == 0) {
+		if (sps->chroma_format_idc == 2)
+			valid_format = V4L2_PIX_FMT_NV16;
+		else
+			valid_format = V4L2_PIX_FMT_NV12;
+	} else if (sps->bit_depth_luma_minus8 == 2) {
+		if (sps->chroma_format_idc == 2)
+			valid_format = V4L2_PIX_FMT_NV20;
+		else
+			valid_format = V4L2_PIX_FMT_NV15;
+	}
+
+	if (valid_format == pixelformat)
+		return 0;
+
+	return -EINVAL;
+}
+
 static int rkvdec_h264_start(struct rkvdec_ctx *ctx)
 {
 	struct rkvdec_dev *rkvdec = ctx->dev;
@@ -1163,6 +1193,7 @@ static int rkvdec_h264_run(struct rkvdec_ctx *ctx)
 
 const struct rkvdec_coded_fmt_ops rkvdec_h264_fmt_ops = {
 	.adjust_fmt = rkvdec_h264_adjust_fmt,
+	.validate_fmt = rkvdec_h264_validate_fmt,
 	.start = rkvdec_h264_start,
 	.stop = rkvdec_h264_stop,
 	.run = rkvdec_h264_run,
