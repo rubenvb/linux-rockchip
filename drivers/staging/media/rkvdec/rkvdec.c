@@ -30,7 +30,7 @@
 static int rkvdec_try_ctrl(struct v4l2_ctrl *ctrl)
 {
 	if (ctrl->id == V4L2_CID_MPEG_VIDEO_H264_SPS) {
-		const struct v4l2_ctrl_h264_sps *sps = ctrl->p_cur.p;
+		const struct v4l2_ctrl_h264_sps *sps = ctrl->p_new.p;
 		/*
 		 * TODO: The hardware supports 10-bit and 4:2:2 profiles,
 		 * but it's currently broken in the driver.
