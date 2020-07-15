@@ -69,6 +69,7 @@ struct rockchip_hdmi {
 	struct regmap *regmap;
 	struct drm_encoder encoder;
 	struct drm_bridge bridge;
+	struct dw_hdmi_plat_data *plat_data;
 	const struct rockchip_hdmi_chip_data *chip_data;
 	struct clk *vpll_clk;
 	struct clk *grf_clk;
@@ -222,8 +223,16 @@ dw_hdmi_rockchip_mode_valid(struct dw_hdmi *hdmi, void *data,
 			    const struct drm_display_info *info,
 			    const struct drm_display_mode *mode)
 {
-	if (mode->clock > 340000 ||
-	    (info->max_tmds_clock && mode->clock > info->max_tmds_clock))
+	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
+	struct dw_hdmi_plat_data *plat_data = hdmi->plat_data;
+	int clock = mode->clock;
+
+	if (plat_data->ycbcr_420_allowed && drm_mode_is_420(info, mode) &&
+	    (info->color_formats & DRM_COLOR_FORMAT_YCRCB420))
+		clock /= 2;
+
+	if (clock > 340000 ||
+	    (info->max_tmds_clock && clock > info->max_tmds_clock))
 		return MODE_CLOCK_HIGH;
 
 	return drm_mode_validate_size(mode, 3840, 2160);
@@ -485,6 +494,7 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		return -ENOMEM;
 
 	hdmi->dev = &pdev->dev;
+	hdmi->plat_data = plat_data;
 	hdmi->chip_data = plat_data->phy_data;
 	plat_data->phy_data = hdmi;
 	encoder = &hdmi->encoder;
