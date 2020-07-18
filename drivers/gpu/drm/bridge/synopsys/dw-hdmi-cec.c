@@ -58,6 +58,7 @@ struct dw_hdmi_cec {
 	u32 addresses;
 	struct cec_adapter *adap;
 	struct cec_msg rx_msg;
+	unsigned int tx_attempts;
 	unsigned int tx_status;
 	bool tx_done;
 	bool rx_done;
@@ -96,6 +97,8 @@ static int dw_hdmi_cec_transmit(struct cec_adapter *adap, u8 attempts,
 	struct dw_hdmi_cec *cec = cec_get_drvdata(adap);
 	unsigned int i, ctrl;
 
+	pr_info("%s: attempts=%u signal_free_time=%u msg=%*ph (sequence: %u)\n", __func__, attempts, signal_free_time, msg->len, msg->msg, msg->sequence);
+
 	switch (signal_free_time) {
 	case CEC_SIGNAL_FREE_TIME_RETRY:
 		ctrl = CEC_CTRL_RETRY;
@@ -131,26 +134,35 @@ static irqreturn_t dw_hdmi_cec_hardirq(int irq, void *data)
 	dw_hdmi_write(cec, stat, HDMI_IH_CEC_STAT0);
 
 	/*
-	 * Status with both done and error_initiator bits have been seen
-	 * on Rockchip RK3328 devices, transmit attempt seems to have failed
-	 * when this happens, report as low drive and block cec-framework
+	 * Status with both done and error_initiator bits have been observed
+	 * on Rockchip RK3328/RK3399 devices, transmit attempt seems to have
+	 * failed when this happens, report as low drive and block cec-framework
 	 * 100ms before core retransmits the failed message, this seems to
 	 * mitigate the issue with failed transmit attempts.
 	 */
 	if ((stat & (CEC_STAT_DONE|CEC_STAT_ERROR_INIT)) == (CEC_STAT_DONE|CEC_STAT_ERROR_INIT)) {
-		pr_info("dw_hdmi_cec_hardirq: stat=%02x LOW_DRIVE\n", stat);
+		if (!cec->tx_attempts)
+			cec->tx_attempts = 2;
 		cec->tx_status = CEC_TX_STATUS_LOW_DRIVE;
 		cec->tx_done = true;
 		ret = IRQ_WAKE_THREAD;
+	} else if (stat & CEC_STAT_ARBLOST) {
+		cec->tx_attempts = 0;
+		cec->tx_status = CEC_TX_STATUS_ARB_LOST;
+		cec->tx_done = true;
+		ret = IRQ_WAKE_THREAD;
 	} else if (stat & CEC_STAT_DONE) {
+		cec->tx_attempts = 0;
 		cec->tx_status = CEC_TX_STATUS_OK;
 		cec->tx_done = true;
 		ret = IRQ_WAKE_THREAD;
 	} else if (stat & CEC_STAT_NACK) {
+		cec->tx_attempts = 0;
 		cec->tx_status = CEC_TX_STATUS_NACK;
 		cec->tx_done = true;
 		ret = IRQ_WAKE_THREAD;
 	} else if (stat & CEC_STAT_ERROR_INIT) {
+		cec->tx_attempts = 0;
 		cec->tx_status = CEC_TX_STATUS_ERROR;
 		cec->tx_done = true;
 		ret = IRQ_WAKE_THREAD;
@@ -176,6 +188,8 @@ static irqreturn_t dw_hdmi_cec_hardirq(int irq, void *data)
 		ret = IRQ_WAKE_THREAD;
 	}
 
+	pr_info("%s: stat=%x ret=%x tx_done=%d rx_done=%d tx_status=%u tx_attempts=%u\n", __func__, stat, ret, cec->tx_done, cec->rx_done, cec->tx_status, cec->tx_attempts);
+
 	return ret;
 }
 
@@ -184,11 +198,19 @@ static irqreturn_t dw_hdmi_cec_thread(int irq, void *data)
 	struct cec_adapter *adap = data;
 	struct dw_hdmi_cec *cec = cec_get_drvdata(adap);
 
+	//pr_info("%s: tx_done=%d rx_done=%d tx_status=%u tx_attempts=%u\n", __func__, cec->tx_done, cec->rx_done, cec->tx_status, cec->tx_attempts);
+
 	if (cec->tx_done) {
 		cec->tx_done = false;
 		if (cec->tx_status == CEC_TX_STATUS_LOW_DRIVE)
 			msleep(100);
-		cec_transmit_attempt_done(adap, cec->tx_status);
+		if (cec->tx_attempts > 1) {
+			cec->tx_attempts--;
+			dw_hdmi_write(cec, CEC_CTRL_RETRY | CEC_CTRL_START, HDMI_CEC_CTRL);
+		} else {
+			cec->tx_attempts = 0;
+			cec_transmit_attempt_done(adap, cec->tx_status);
+		}
 	}
 	if (cec->rx_done) {
 		cec->rx_done = false;
@@ -219,8 +241,8 @@ static int dw_hdmi_cec_enable(struct cec_adapter *adap, bool enable)
 
 		cec->ops->enable(cec->hdmi);
 
-		irqs = CEC_STAT_ERROR_INIT | CEC_STAT_NACK | CEC_STAT_EOM |
-		       CEC_STAT_DONE;
+		irqs = CEC_STAT_ERROR_INIT | CEC_STAT_ARBLOST | CEC_STAT_NACK |
+		       CEC_STAT_EOM | CEC_STAT_DONE;
 		dw_hdmi_write(cec, irqs, HDMI_CEC_POLARITY);
 		dw_hdmi_write(cec, ~irqs, HDMI_CEC_MASK);
 		dw_hdmi_write(cec, ~irqs, HDMI_IH_MUTE_CEC_STAT0);
