@@ -1152,6 +1152,7 @@ static enum drm_mode_status vop_crtc_mode_valid(struct drm_crtc *crtc,
 					const struct drm_display_mode *mode)
 {
 	struct vop *vop = to_vop(crtc);
+	const struct vop_rect *max_output = &vop->data->max_output;
 	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc->state);
 	long rounded_rate;
 	long lowest, highest;
@@ -1170,6 +1171,10 @@ static enum drm_mode_status vop_crtc_mode_valid(struct drm_crtc *crtc,
 	highest = mode->clock * (1000 + CLOCK_TOLERANCE_PER_MILLE);
 	if (rounded_rate > highest)
 		return MODE_CLOCK_HIGH;
+
+	if (max_output->width && max_output->height)
+		return drm_mode_validate_size(mode, max_output->width,
+					      max_output->height);
 
 	return MODE_OK;
 }
