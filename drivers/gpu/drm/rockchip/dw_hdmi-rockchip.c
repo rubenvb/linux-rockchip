@@ -369,6 +369,21 @@ static bool is_10bit(u32 format)
 	}
 }
 
+static const char *get_format_name(u32 format) {
+	switch (format) {
+	case MEDIA_BUS_FMT_FIXED: return "FIXED";
+	case MEDIA_BUS_FMT_RGB888_1X24: return "RGB-8";
+	case MEDIA_BUS_FMT_RGB101010_1X30: return "RGB-10";
+	case MEDIA_BUS_FMT_YUV8_1X24: return "YUV444-8";
+	case MEDIA_BUS_FMT_YUV10_1X30: return "YUV444-10";
+	case MEDIA_BUS_FMT_UYVY8_1X16: return "YUV422-8";
+	case MEDIA_BUS_FMT_UYVY10_1X20: return "YUV422-10";
+	case MEDIA_BUS_FMT_UYYVYY8_0_5X24: return "YUV420-8";
+	case MEDIA_BUS_FMT_UYYVYY10_0_5X30: return "YUV420-10";
+	default: return "???";
+	}
+}
+
 static int
 dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 				     struct drm_bridge_state *bridge_state,
@@ -410,6 +425,12 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 			crtc_state->mode_changed = true;
 	}
 
+	pr_info("%s: bus format %s (0x%04x), format %s (0x%04x)\n", __func__,
+		get_format_name(s->bus_format),
+		s->bus_format,
+		get_format_name(format),
+		format);
+
 	return 0;
 }
 
@@ -428,6 +449,9 @@ static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
 
 	*num_input_fmts = 0;
 
+	pr_info("%s: output_fmt %s (0x%04x), ycbcr_444_allowed=%d\n", __func__,
+		get_format_name(output_fmt), output_fmt, hdmi->chip_data->ycbcr_444_allowed);
+
 	if (drm_of_encoder_active_endpoint_id(hdmi->dev->of_node, encoder))
 		has_10bit = false;
 
@@ -440,8 +464,9 @@ static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
 	} else if (is_yuv420(output_fmt)) {
 		if (!connector->ycbcr_420_allowed)
 			return NULL;
-	} else if (!is_rgb(output_fmt))
+	} else if (!is_rgb(output_fmt)) {
 		return NULL;
+	}
 
 	input_fmt = kzalloc(sizeof(*input_fmt), GFP_KERNEL);
 	if (!input_fmt)
@@ -449,6 +474,9 @@ static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
 
 	*num_input_fmts = 1;
 	*input_fmt = output_fmt;
+
+	pr_info("%s: input_fmt %s (0x%04x)\n", __func__,
+		get_format_name(*input_fmt), *input_fmt);
 
 	return input_fmt;
 }

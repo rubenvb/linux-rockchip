@@ -861,8 +861,10 @@ static const struct vop_yuv2yuv_phy rk3399_yuv2yuv_win23_data = { };
 
 static const struct vop_win_yuv2yuv_data rk3399_vop_big_win_yuv2yuv_data[] = {
 	{ .base = 0x00, .phy = &rk3399_yuv2yuv_win01_data,
+	  .r2y_en = VOP_REG(RK3399_YUV2YUV_WIN, 0x1, 2),
 	  .y2r_en = VOP_REG(RK3399_YUV2YUV_WIN, 0x1, 1) },
 	{ .base = 0x60, .phy = &rk3399_yuv2yuv_win01_data,
+	  .r2y_en = VOP_REG(RK3399_YUV2YUV_WIN, 0x1, 10),
 	  .y2r_en = VOP_REG(RK3399_YUV2YUV_WIN, 0x1, 9) },
 	{ .base = 0xC0, .phy = &rk3399_yuv2yuv_win23_data },
 	{ .base = 0x120, .phy = &rk3399_yuv2yuv_win23_data },
@@ -877,6 +879,7 @@ static const struct vop_win_phy rk3399_win01_data = {
 	.enable = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 0),
 	.format = VOP_REG(RK3288_WIN0_CTRL0, 0x7, 1),
 	.rb_swap = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 12),
+	.x_mir_en = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 21),
 	.y_mir_en = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 22),
 	.act_info = VOP_REG(RK3288_WIN0_ACT_INFO, 0x1fff1fff, 0),
 	.dsp_info = VOP_REG(RK3288_WIN0_DSP_INFO, 0x0fff0fff, 0),

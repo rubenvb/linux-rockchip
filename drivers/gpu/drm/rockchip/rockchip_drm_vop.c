@@ -974,7 +974,8 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	VOP_WIN_SET(vop, win, format, format);
 	VOP_WIN_SET(vop, win, yrgb_vir, DIV_ROUND_UP(fb->pitches[0], 4));
 	VOP_WIN_SET(vop, win, yrgb_mst, dma_addr);
-	VOP_WIN_YUV2YUV_SET(vop, win_yuv2yuv, y2r_en, is_yuv);
+	//VOP_WIN_YUV2YUV_SET(vop, win_yuv2yuv, y2r_en, is_yuv);
+	//VOP_WIN_YUV2YUV_SET(vop, win_yuv2yuv, r2y_en, !is_yuv);
 	VOP_WIN_SET(vop, win, y_mir_en,
 		    (state->rotation & DRM_MODE_REFLECT_Y) ? 1 : 0);
 	VOP_WIN_SET(vop, win, x_mir_en,
@@ -995,12 +996,12 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 		VOP_WIN_SET(vop, win, uv_vir, DIV_ROUND_UP(fb->pitches[1], 4));
 		VOP_WIN_SET(vop, win, uv_mst, dma_addr);
 
-		for (i = 0; i < NUM_YUV2YUV_COEFFICIENTS; i++) {
-			VOP_WIN_YUV2YUV_COEFFICIENT_SET(vop,
-							win_yuv2yuv,
-							y2r_coefficients[i],
-							bt601_yuv2rgb[i]);
-		}
+		//for (i = 0; i < NUM_YUV2YUV_COEFFICIENTS; i++) {
+		//	VOP_WIN_YUV2YUV_COEFFICIENT_SET(vop,
+		//					win_yuv2yuv,
+		//					y2r_coefficients[i],
+		//					bt601_yuv2rgb[i]);
+		//}
 	}
 
 	if (win->phy->scl)

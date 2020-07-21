@@ -971,8 +971,9 @@ static int is_color_space_conversion(struct dw_hdmi *hdmi)
 	is_input_rgb = hdmi_bus_fmt_is_rgb(hdmi_data->enc_in_bus_format);
 	is_output_rgb = hdmi_bus_fmt_is_rgb(hdmi_data->enc_out_bus_format);
 
-	return (is_input_rgb != is_output_rgb) ||
-	       (is_input_rgb && is_output_rgb && hdmi_data->rgb_limited_range);
+	//return (is_input_rgb != is_output_rgb) ||
+	//       (is_input_rgb && is_output_rgb && hdmi_data->rgb_limited_range);
+	return 0;
 }
 
 static int is_color_space_decimation(struct dw_hdmi *hdmi)
@@ -1017,19 +1018,19 @@ static void dw_hdmi_update_csc_coeffs(struct dw_hdmi *hdmi)
 	is_output_rgb = hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format);
 
 	if (!is_input_rgb && is_output_rgb) {
-		if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601)
-			csc_coeff = &csc_coeff_rgb_out_eitu601;
-		else
-			csc_coeff = &csc_coeff_rgb_out_eitu709;
+		//if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601)
+		//	csc_coeff = &csc_coeff_rgb_out_eitu601;
+		//else
+		//	csc_coeff = &csc_coeff_rgb_out_eitu709;
 	} else if (is_input_rgb && !is_output_rgb) {
-		if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601)
-			csc_coeff = &csc_coeff_rgb_in_eitu601;
-		else
-			csc_coeff = &csc_coeff_rgb_in_eitu709;
+		//if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601)
+		//	csc_coeff = &csc_coeff_rgb_in_eitu601;
+		//else
+		//	csc_coeff = &csc_coeff_rgb_in_eitu709;
 		csc_scale = 0;
 	} else if (is_input_rgb && is_output_rgb &&
 		   hdmi->hdmi_data.rgb_limited_range) {
-		csc_coeff = &csc_coeff_rgb_full_to_rgb_limited;
+		//csc_coeff = &csc_coeff_rgb_full_to_rgb_limited;
 	}
 
 	/* The CSC registers are sequential, alternating MSB then LSB */
@@ -1892,8 +1893,8 @@ static void hdmi_av_composer(struct dw_hdmi *hdmi,
 		hdmi_get_tmdsclock(hdmi->hdmi_data.enc_out_bus_format,
 				   vmode->mpixelclock);
 
-	dev_dbg(hdmi->dev, "final pixclk = %d\n", vmode->mpixelclock);
-	dev_dbg(hdmi->dev, "final tmdsclock = %d\n", vmode->mtmdsclock);
+	dev_info(hdmi->dev, "final pixclk = %d\n", vmode->mpixelclock);
+	dev_info(hdmi->dev, "final tmdsclock = %d\n", vmode->mtmdsclock);
 
 	/* Set up HDMI_FC_INVIDCONF */
 	inv_val = (hdmi->hdmi_data.hdcp_enable ||
@@ -2168,9 +2169,10 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi,
 	if (hdmi->hdmi_data.enc_out_bus_format == MEDIA_BUS_FMT_FIXED)
 		hdmi->hdmi_data.enc_out_bus_format = MEDIA_BUS_FMT_RGB888_1X24;
 
-	hdmi->hdmi_data.rgb_limited_range = hdmi->sink_is_hdmi &&
-		drm_default_rgb_quant_range(mode) ==
-		HDMI_QUANTIZATION_RANGE_LIMITED;
+	//hdmi->hdmi_data.rgb_limited_range = hdmi->sink_is_hdmi &&
+	//	drm_default_rgb_quant_range(mode) ==
+	//	HDMI_QUANTIZATION_RANGE_LIMITED;
+	hdmi->hdmi_data.rgb_limited_range = false;
 
 	hdmi->hdmi_data.pix_repet_factor = 0;
 	hdmi->hdmi_data.hdcp_enable = 0;
@@ -2734,62 +2736,62 @@ static u32 *dw_hdmi_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	/* 8bit */
 	case MEDIA_BUS_FMT_RGB888_1X24:
 		input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
-		input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
-		input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
+		//input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
+		//input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
 		break;
 	case MEDIA_BUS_FMT_YUV8_1X24:
 		input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
-		input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
-		input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
+		//input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
+		//input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
 		break;
 	case MEDIA_BUS_FMT_UYVY8_1X16:
 		input_fmts[i++] = MEDIA_BUS_FMT_UYVY8_1X16;
-		input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
-		input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
+		//input_fmts[i++] = MEDIA_BUS_FMT_YUV8_1X24;
+		//input_fmts[i++] = MEDIA_BUS_FMT_RGB888_1X24;
 		break;
 
 	/* 10bit */
 	case MEDIA_BUS_FMT_RGB101010_1X30:
 		input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
-		input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
-		input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
+		//input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
+		//input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
 		break;
 	case MEDIA_BUS_FMT_YUV10_1X30:
 		input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
-		input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
-		input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
+		//input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
+		//input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
 		break;
 	case MEDIA_BUS_FMT_UYVY10_1X20:
 		input_fmts[i++] = MEDIA_BUS_FMT_UYVY10_1X20;
-		input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
-		input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
+		//input_fmts[i++] = MEDIA_BUS_FMT_YUV10_1X30;
+		//input_fmts[i++] = MEDIA_BUS_FMT_RGB101010_1X30;
 		break;
 
 	/* 12bit */
 	case MEDIA_BUS_FMT_RGB121212_1X36:
 		input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
-		input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
-		input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
+		//input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
+		//input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
 		break;
 	case MEDIA_BUS_FMT_YUV12_1X36:
 		input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
-		input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
-		input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
+		//input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
+		//input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
 		break;
 	case MEDIA_BUS_FMT_UYVY12_1X24:
 		input_fmts[i++] = MEDIA_BUS_FMT_UYVY12_1X24;
-		input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
-		input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
+		//input_fmts[i++] = MEDIA_BUS_FMT_YUV12_1X36;
+		//input_fmts[i++] = MEDIA_BUS_FMT_RGB121212_1X36;
 		break;
 
 	/* 16bit */
 	case MEDIA_BUS_FMT_RGB161616_1X48:
 		input_fmts[i++] = MEDIA_BUS_FMT_RGB161616_1X48;
-		input_fmts[i++] = MEDIA_BUS_FMT_YUV16_1X48;
+		//input_fmts[i++] = MEDIA_BUS_FMT_YUV16_1X48;
 		break;
 	case MEDIA_BUS_FMT_YUV16_1X48:
 		input_fmts[i++] = MEDIA_BUS_FMT_YUV16_1X48;
-		input_fmts[i++] = MEDIA_BUS_FMT_RGB161616_1X48;
+		//input_fmts[i++] = MEDIA_BUS_FMT_RGB161616_1X48;
 		break;
 
 	/*YUV 4:2:0 */
@@ -2811,6 +2813,21 @@ static u32 *dw_hdmi_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	return input_fmts;
 }
 
+static const char *get_format_name(u32 format) {
+	switch (format) {
+	case MEDIA_BUS_FMT_FIXED: return "FIXED";
+	case MEDIA_BUS_FMT_RGB888_1X24: return "RGB-8";
+	case MEDIA_BUS_FMT_RGB101010_1X30: return "RGB-10";
+	case MEDIA_BUS_FMT_YUV8_1X24: return "YUV444-8";
+	case MEDIA_BUS_FMT_YUV10_1X30: return "YUV444-10";
+	case MEDIA_BUS_FMT_UYVY8_1X16: return "YUV422-8";
+	case MEDIA_BUS_FMT_UYVY10_1X20: return "YUV422-10";
+	case MEDIA_BUS_FMT_UYYVYY8_0_5X24: return "YUV420-8";
+	case MEDIA_BUS_FMT_UYYVYY10_0_5X30: return "YUV420-10";
+	default: return "???";
+	}
+}
+
 static int dw_hdmi_bridge_atomic_check(struct drm_bridge *bridge,
 				       struct drm_bridge_state *bridge_state,
 				       struct drm_crtc_state *crtc_state,
@@ -2824,9 +2841,11 @@ static int dw_hdmi_bridge_atomic_check(struct drm_bridge *bridge,
 	hdmi->hdmi_data.enc_in_bus_format =
 			bridge_state->input_bus_cfg.format;
 
-	dev_dbg(hdmi->dev, "input format 0x%04x, output format 0x%04x\n",
-		bridge_state->input_bus_cfg.format,
-		bridge_state->output_bus_cfg.format);
+	dev_info(hdmi->dev, "input format %s (0x%04x), output format %s (0x%04x)\n",
+		get_format_name(hdmi->hdmi_data.enc_in_bus_format),
+		hdmi->hdmi_data.enc_in_bus_format,
+		get_format_name(hdmi->hdmi_data.enc_out_bus_format),
+		hdmi->hdmi_data.enc_out_bus_format);
 
 	return 0;
 }
