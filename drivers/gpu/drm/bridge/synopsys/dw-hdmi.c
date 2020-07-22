@@ -86,16 +86,34 @@ static const u16 csc_coeff_rgb_in_eitu601[3][4] = {
 	{ 0x6acd, 0x7534, 0x2000, 0x0200 }
 };
 
+static const u16 csc_coeff_rgb_in_eitu601_10bit[3][4] = {
+	{ 0x2591, 0x1322, 0x074b, 0x0000 },
+	{ 0x6535, 0x2000, 0x7acc, 0x0800 },
+	{ 0x6acd, 0x7534, 0x2000, 0x0800 }
+};
+
 static const u16 csc_coeff_rgb_in_eitu709[3][4] = {
 	{ 0x2dc5, 0x0d9b, 0x049e, 0x0000 },
 	{ 0x62f0, 0x2000, 0x7d11, 0x0200 },
 	{ 0x6756, 0x78ab, 0x2000, 0x0200 }
 };
 
+static const u16 csc_coeff_rgb_in_eitu709_10bit[3][4] = {
+	{ 0x2dc5, 0x0d9b, 0x049e, 0x0000 },
+	{ 0x62f0, 0x2000, 0x7d11, 0x0800 },
+	{ 0x6756, 0x78ab, 0x2000, 0x0800 }
+};
+
 static const u16 csc_coeff_rgb_full_to_rgb_limited[3][4] = {
-	{ 0x1b7c, 0x0000, 0x0000, 0x0020 },
-	{ 0x0000, 0x1b7c, 0x0000, 0x0020 },
-	{ 0x0000, 0x0000, 0x1b7c, 0x0020 }
+	{ 0x36f7, 0x0000, 0x0000, 0x0040 },
+	{ 0x0000, 0x36f7, 0x0000, 0x0040 },
+	{ 0x0000, 0x0000, 0x36f7, 0x0040 }
+};
+
+static const u16 csc_coeff_rgb_full_to_rgb_limited_10bit[3][4] = {
+	{ 0x36f7, 0x0000, 0x0000, 0x0100 },
+	{ 0x0000, 0x36f7, 0x0000, 0x0100 },
+	{ 0x0000, 0x0000, 0x36f7, 0x0100 }
 };
 
 struct hdmi_vmode {
@@ -1011,26 +1029,38 @@ static void dw_hdmi_update_csc_coeffs(struct dw_hdmi *hdmi)
 {
 	const u16 (*csc_coeff)[3][4] = &csc_coeff_default;
 	bool is_input_rgb, is_output_rgb;
+	int color_depth;
 	unsigned i;
 	u32 csc_scale = 1;
 
 	is_input_rgb = hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_in_bus_format);
 	is_output_rgb = hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format);
+	color_depth = hdmi_bus_fmt_color_depth(hdmi->hdmi_data.enc_out_bus_format);
 
 	if (!is_input_rgb && is_output_rgb) {
-		//if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601)
-		//	csc_coeff = &csc_coeff_rgb_out_eitu601;
-		//else
-		//	csc_coeff = &csc_coeff_rgb_out_eitu709;
+		if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601)
+			csc_coeff = &csc_coeff_rgb_out_eitu601;
+		else
+			csc_coeff = &csc_coeff_rgb_out_eitu709;
 	} else if (is_input_rgb && !is_output_rgb) {
-		//if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601)
-		//	csc_coeff = &csc_coeff_rgb_in_eitu601;
-		//else
-		//	csc_coeff = &csc_coeff_rgb_in_eitu709;
+		if (hdmi->hdmi_data.enc_out_encoding == V4L2_YCBCR_ENC_601) {
+			if (color_depth == 10)
+				csc_coeff = &csc_coeff_rgb_in_eitu601_10bit;
+			else
+				csc_coeff = &csc_coeff_rgb_in_eitu601;
+		} else {
+			if (color_depth == 10)
+				csc_coeff = &csc_coeff_rgb_in_eitu709_10bit;
+			else
+				csc_coeff = &csc_coeff_rgb_in_eitu709;
+		}
 		csc_scale = 0;
 	} else if (is_input_rgb && is_output_rgb &&
 		   hdmi->hdmi_data.rgb_limited_range) {
-		//csc_coeff = &csc_coeff_rgb_full_to_rgb_limited;
+		if (color_depth == 10)
+			csc_coeff = &csc_coeff_rgb_full_to_rgb_limited_10bit;
+		else
+			csc_coeff = &csc_coeff_rgb_full_to_rgb_limited;
 	}
 
 	/* The CSC registers are sequential, alternating MSB then LSB */
@@ -1094,7 +1124,8 @@ static void hdmi_video_csc(struct dw_hdmi *hdmi)
  * for example, if input is YCC422 mode or repeater is used,
  * data should be repacked this module can be bypassed.
  */
-static void hdmi_video_packetize(struct dw_hdmi *hdmi)
+static void hdmi_video_packetize(struct dw_hdmi *hdmi,
+				 const struct drm_display_mode *mode)
 {
 	unsigned int color_depth = 0;
 	unsigned int remap_size = HDMI_VP_REMAP_YCC422_16bit;
@@ -1108,7 +1139,7 @@ static void hdmi_video_packetize(struct dw_hdmi *hdmi)
 		switch (hdmi_bus_fmt_color_depth(
 					hdmi->hdmi_data.enc_out_bus_format)) {
 		case 8:
-			color_depth = 4;
+			color_depth = 0;
 			output_select = HDMI_VP_CONF_OUTPUT_SELECTOR_BYPASS;
 			break;
 		case 10:
@@ -1169,8 +1200,13 @@ static void hdmi_video_packetize(struct dw_hdmi *hdmi)
 		  HDMI_VP_CONF_PR_EN_MASK |
 		  HDMI_VP_CONF_BYPASS_SELECT_MASK, HDMI_VP_CONF);
 
-	hdmi_modb(hdmi, 1 << HDMI_VP_STUFF_IDEFAULT_PHASE_OFFSET,
-		  HDMI_VP_STUFF_IDEFAULT_PHASE_MASK, HDMI_VP_STUFF);
+	if ((color_depth == 5 && mode->htotal % 4) ||
+	    (color_depth == 6 && mode->htotal % 2))
+		hdmi_modb(hdmi, 0, HDMI_VP_STUFF_IDEFAULT_PHASE_MASK,
+			  HDMI_VP_STUFF);
+	else
+		hdmi_modb(hdmi, 1 << HDMI_VP_STUFF_IDEFAULT_PHASE_OFFSET,
+			  HDMI_VP_STUFF_IDEFAULT_PHASE_MASK, HDMI_VP_STUFF);
 
 	hdmi_writeb(hdmi, remap_size, HDMI_VP_REMAP);
 
@@ -1693,6 +1729,14 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi,
 			frame.extended_colorimetry =
 					HDMI_EXTENDED_COLORIMETRY_XV_YCC_709;
 			break;
+		case V4L2_YCBCR_ENC_BT2020:
+			if (hdmi->hdmi_data.enc_in_encoding == V4L2_YCBCR_ENC_BT2020)
+				frame.colorimetry = HDMI_COLORIMETRY_EXTENDED;
+			else
+				frame.colorimetry = HDMI_COLORIMETRY_ITU_709;
+			frame.extended_colorimetry =
+					HDMI_EXTENDED_COLORIMETRY_BT2020;
+			break;
 		default: /* Carries no data */
 			frame.colorimetry = HDMI_COLORIMETRY_ITU_601;
 			frame.extended_colorimetry =
@@ -2212,7 +2256,7 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi,
 		dev_dbg(hdmi->dev, "%s DVI mode\n", __func__);
 	}
 
-	hdmi_video_packetize(hdmi);
+	hdmi_video_packetize(hdmi, mode);
 	hdmi_video_csc(hdmi);
 	hdmi_video_sample(hdmi);
 	hdmi_tx_hdcp_config(hdmi);
