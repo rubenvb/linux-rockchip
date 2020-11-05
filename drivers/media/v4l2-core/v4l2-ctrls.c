@@ -1625,7 +1625,8 @@ static bool std_equal(const struct v4l2_ctrl *ctrl, u32 idx,
 static void std_init_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 			      union v4l2_ctrl_ptr ptr)
 {
-	struct v4l2_ctrl_mpeg2_slice_params *p_mpeg2_slice_params;
+	struct v4l2_ctrl_mpeg2_sequence *p_mpeg2_sequence;
+	struct v4l2_ctrl_mpeg2_picture *p_mpeg2_picture;
 	struct v4l2_ctrl_vp8_frame_header *p_vp8_frame_header;
 	void *p = ptr.p + idx * ctrl->elem_size;
 
@@ -1640,13 +1641,18 @@ static void std_init_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 	 * v4l2_ctrl_type enum.
 	 */
 	switch ((u32)ctrl->type) {
-	case V4L2_CTRL_TYPE_MPEG2_SLICE_PARAMS:
-		p_mpeg2_slice_params = p;
+	case V4L2_CTRL_TYPE_MPEG2_SEQUENCE:
+		p_mpeg2_sequence = p;
+
 		/* 4:2:0 */
-		p_mpeg2_slice_params->sequence.chroma_format = 1;
+		p_mpeg2_sequence->chroma_format = 1;
+		break;
+	case V4L2_CTRL_TYPE_MPEG2_PICTURE:
+		p_mpeg2_picture = p;
+
 		/* interlaced top field */
-		p_mpeg2_slice_params->picture.picture_structure = 1;
-		p_mpeg2_slice_params->picture.picture_coding_type =
+		p_mpeg2_picture->picture_structure = 1;
+		p_mpeg2_picture->picture_coding_type =
 					V4L2_MPEG2_PIC_CODING_TYPE_I;
 		break;
 	case V4L2_CTRL_TYPE_VP8_FRAME_HEADER:
@@ -1796,6 +1802,8 @@ static void std_log(const struct v4l2_ctrl *ctrl)
 static int std_validate_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 				 union v4l2_ctrl_ptr ptr)
 {
+	struct v4l2_ctrl_mpeg2_sequence *p_mpeg2_sequence;
+	struct v4l2_ctrl_mpeg2_picture *p_mpeg2_picture;
 	struct v4l2_ctrl_mpeg2_slice_params *p_mpeg2_slice_params;
 	struct v4l2_ctrl_vp8_frame_header *p_vp8_frame_header;
 	struct v4l2_ctrl_h264_sps *p_h264_sps;
@@ -1811,10 +1819,10 @@ static int std_validate_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 	unsigned int i;
 
 	switch ((u32)ctrl->type) {
-	case V4L2_CTRL_TYPE_MPEG2_SLICE_PARAMS:
-		p_mpeg2_slice_params = p;
+	case V4L2_CTRL_TYPE_MPEG2_SEQUENCE:
+		p_mpeg2_sequence = p;
 
-		switch (p_mpeg2_slice_params->sequence.chroma_format) {
+		switch (p_mpeg2_sequence->chroma_format) {
 		case 1: /* 4:2:0 */
 		case 2: /* 4:2:2 */
 		case 3: /* 4:4:4 */
@@ -1822,8 +1830,14 @@ static int std_validate_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 		default:
 			return -EINVAL;
 		}
+		zero_reserved(*p_mpeg2_sequence);
+		break;
 
-		switch (p_mpeg2_slice_params->picture.intra_dc_precision) {
+	case V4L2_CTRL_TYPE_MPEG2_PICTURE:
+		p_mpeg2_picture = p;
+		break;
+
+		switch (p_mpeg2_picture->intra_dc_precision) {
 		case 0: /* 8 bits */
 		case 1: /* 9 bits */
 		case 2: /* 10 bits */
@@ -1832,8 +1846,9 @@ static int std_validate_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 		default:
 			return -EINVAL;
 		}
+		break;
 
-		switch (p_mpeg2_slice_params->picture.picture_structure) {
+		switch (p_mpeg2_picture->picture_structure) {
 		case V4L2_MPEG2_PIC_TOP_FIELD:
 		case V4L2_MPEG2_PIC_BOTTOM_FIELD:
 		case V4L2_MPEG2_PIC_FRAME:
@@ -1842,7 +1857,7 @@ static int std_validate_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 			return -EINVAL;
 		}
 
-		switch (p_mpeg2_slice_params->picture.picture_coding_type) {
+		switch (p_mpeg2_picture->picture_coding_type) {
 		case V4L2_MPEG2_PIC_CODING_TYPE_I:
 		case V4L2_MPEG2_PIC_CODING_TYPE_P:
 		case V4L2_MPEG2_PIC_CODING_TYPE_B:
@@ -1850,7 +1865,13 @@ static int std_validate_compound(const struct v4l2_ctrl *ctrl, u32 idx,
 		default:
 			return -EINVAL;
 		}
+		zero_reserved(*p_mpeg2_picture);
+		break;
 
+	case V4L2_CTRL_TYPE_MPEG2_SLICE_PARAMS:
+		p_mpeg2_slice_params = p;
+
+		zero_reserved(*p_mpeg2_slice_params);
 		break;
 
 	case V4L2_CTRL_TYPE_MPEG2_QUANTIZATION:

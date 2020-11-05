@@ -31,6 +31,20 @@
 static const struct cedrus_control cedrus_controls[] = {
 	{
 		.cfg = {
+			.id	= V4L2_CID_MPEG_VIDEO_MPEG2_SEQUENCE,
+		},
+		.codec		= CEDRUS_CODEC_MPEG2,
+		.required	= true,
+	},
+	{
+		.cfg = {
+			.id	= V4L2_CID_MPEG_VIDEO_MPEG2_PICTURE,
+		},
+		.codec		= CEDRUS_CODEC_MPEG2,
+		.required	= true,
+	},
+	{
+		.cfg = {
 			.id	= V4L2_CID_MPEG_VIDEO_MPEG2_SLICE_PARAMS,
 		},
 		.codec		= CEDRUS_CODEC_MPEG2,
