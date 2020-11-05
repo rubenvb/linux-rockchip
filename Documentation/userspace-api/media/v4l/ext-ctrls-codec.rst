@@ -1533,12 +1533,6 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     :stub-columns: 0
     :widths:       1 1 2
 
-    * - __u32
-      - ``bit_size``
-      - Size (in bits) of the current slice data.
-    * - __u32
-      - ``data_bit_offset``
-      - Offset (in bits) to the video data in the current slice data.
     * - struct :c:type:`v4l2_mpeg2_sequence`
       - ``sequence``
       - Structure with MPEG-2 sequence metadata, merging relevant fields from

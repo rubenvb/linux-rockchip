@@ -68,8 +68,6 @@ struct v4l2_mpeg2_picture {
 };
 
 struct v4l2_ctrl_mpeg2_slice_params {
-	__u32	bit_size;
-	__u32	data_bit_offset;
 	__u64	backward_ref_ts;
 	__u64	forward_ref_ts;
 
