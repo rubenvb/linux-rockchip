@@ -18,10 +18,7 @@
 #define V4L2_CTRL_TYPE_MPEG2_SLICE_PARAMS 0x0103
 #define	V4L2_CTRL_TYPE_MPEG2_QUANTIZATION 0x0104
 
-#define V4L2_MPEG2_PICTURE_CODING_TYPE_I	1
-#define V4L2_MPEG2_PICTURE_CODING_TYPE_P	2
-#define V4L2_MPEG2_PICTURE_CODING_TYPE_B	3
-#define V4L2_MPEG2_PICTURE_CODING_TYPE_D	4
+#define V4L2_MPEG2_SEQ_FLAG_PROGRESSIVE		0x0001
 
 struct v4l2_mpeg2_sequence {
 	/* ISO/IEC 13818-2, ITU-T Rec. H.262: Sequence header */
@@ -31,9 +28,32 @@ struct v4l2_mpeg2_sequence {
 
 	/* ISO/IEC 13818-2, ITU-T Rec. H.262: Sequence extension */
 	__u16	profile_and_level_indication;
-	__u8	progressive_sequence;
 	__u8	chroma_format;
+
+	__u32	flags;
 };
+
+#define V4L2_MPEG2_PIC_CODING_TYPE_I			1
+#define V4L2_MPEG2_PIC_CODING_TYPE_P			2
+#define V4L2_MPEG2_PIC_CODING_TYPE_B			3
+#define V4L2_MPEG2_PIC_CODING_TYPE_D			4
+
+#define V4L2_MPEG2_PIC_TOP_FIELD			0x1
+#define V4L2_MPEG2_PIC_BOTTOM_FIELD			0x2
+#define V4L2_MPEG2_PIC_FRAME				0x3
+
+#define V4L2_MPEG2_PIC_FLAG_TOP_FIELD_FIRST		0x0001
+#define V4L2_MPEG2_PIC_FLAG_FRAME_PRED_DCT		0x0002
+#define V4L2_MPEG2_PIC_FLAG_CONCEALMENT_MV		0x0004
+#define V4L2_MPEG2_PIC_FLAG_Q_SCALE_TYPE		0x0008
+#define V4L2_MPEG2_PIC_FLAG_INTRA_VLC			0x0010
+#define V4L2_MPEG2_PIC_FLAG_ALT_SCAN			0x0020
+#define V4L2_MPEG2_PIC_FLAG_REPEAT_FIRST		0x0040
+#define V4L2_MPEG2_PIC_FLAG_PROGRESSIVE			0x0080
+#define V4L2_MPEG2_PIC_FLAG_LOAD_INTRA			0x0100
+#define V4L2_MPEG2_PIC_FLAG_LOAD_NON_INTRA		0x0200
+#define V4L2_MPEG2_PIC_FLAG_LOAD_CHROMA_INTRA		0x0400
+#define V4L2_MPEG2_PIC_FLAG_LOAD_CHROMA_NON_INTRA	0x0800
 
 struct v4l2_mpeg2_picture {
 	/* ISO/IEC 13818-2, ITU-T Rec. H.262: Picture header */
@@ -43,14 +63,8 @@ struct v4l2_mpeg2_picture {
 	__u8	f_code[2][2];
 	__u8	intra_dc_precision;
 	__u8	picture_structure;
-	__u8	top_field_first;
-	__u8	frame_pred_frame_dct;
-	__u8	concealment_motion_vectors;
-	__u8	q_scale_type;
-	__u8	intra_vlc_format;
-	__u8	alternate_scan;
-	__u8	repeat_first_field;
-	__u16	progressive_frame;
+
+	__u32	flags;
 };
 
 struct v4l2_ctrl_mpeg2_slice_params {
@@ -66,13 +80,8 @@ struct v4l2_ctrl_mpeg2_slice_params {
 	__u32	quantiser_scale_code;
 };
 
+/* ISO/IEC 13818-2, ITU-T Rec. H.262: Quant matrix extension */
 struct v4l2_ctrl_mpeg2_quantization {
-	/* ISO/IEC 13818-2, ITU-T Rec. H.262: Quant matrix extension */
-	__u8	load_intra_quantiser_matrix;
-	__u8	load_non_intra_quantiser_matrix;
-	__u8	load_chroma_intra_quantiser_matrix;
-	__u8	load_chroma_non_intra_quantiser_matrix;
-
 	__u8	intra_quantiser_matrix[64];
 	__u8	non_intra_quantiser_matrix[64];
 	__u8	chroma_intra_quantiser_matrix[64];

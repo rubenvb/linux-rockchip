@@ -1591,12 +1591,27 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
       - The current profile and level indication as extracted from the
 	bitstream.
     * - __u8
-      - ``progressive_sequence``
-      - Indication that all the frames for the sequence are progressive instead
-	of interlaced.
-    * - __u8
       - ``chroma_format``
       - The chrominance sub-sampling format (1: 4:2:0, 2: 4:2:2, 3: 4:4:4).
+    * - __u32
+      - ``flags``
+      - See :ref:`MPEG-2 Sequence Flags <mpeg2_sequence_flags>`.
+
+.. _mpeg2_sequence_flags:
+
+``MPEG-2 Sequence Flags``
+
+.. cssclass:: longtable
+
+.. flat-table::
+    :header-rows:  0
+    :stub-columns: 0
+    :widths:       1 1 2
+
+    * - ``V4L2_MPEG2_SEQ_FLAG_PROGRESSIVE``
+      - 0x00000001
+      - Indication that all the frames for the sequence are progressive instead
+	of interlaced.
 
 .. c:type:: v4l2_mpeg2_picture
 
@@ -1625,30 +1640,60 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
       - ``picture_structure``
       - Picture structure (1: interlaced top field, 2: interlaced bottom field,
 	3: progressive frame).
-    * - __u8
-      - ``top_field_first``
-      - If set to 1 and interlaced stream, top field is output first.
-    * - __u8
-      - ``frame_pred_frame_dct``
-      - If set to 1, only frame-DCT and frame prediction are used.
-    * - __u8
-      - ``concealment_motion_vectors``
-      -  If set to 1, motion vectors are coded for intra macroblocks.
-    * - __u8
-      - ``q_scale_type``
+    * - __u32
+      - ``flags``
+      - See :ref:`MPEG-2 Picture Flags <mpeg2_picture_flags>`.
+
+
+.. _mpeg2_picture_flags:
+
+``MPEG-2 Picture Flags``
+
+.. cssclass:: longtable
+
+.. flat-table::
+    :header-rows:  0
+    :stub-columns: 0
+    :widths:       1 1 2
+
+    * - ``V4L2_MPEG2_PIC_FLAG_TOP_FIELD_FIRST``
+      - 0x00000001
+      - If set and it's an interlaced stream, top field is output first.
+    * - ``V4L2_MPEG2_PIC_FLAG_FRAME_PRED_DCT``
+      - 0x00000002
+      - If set only frame-DCT and frame prediction are used.
+    * - ``V4L2_MPEG2_PIC_FLAG_CONCEALMENT_MV``
+      - 0x00000004
+      -  If set motion vectors are coded for intra macroblocks.
+    * - ``V4L2_MPEG2_PIC_FLAG_Q_SCALE_TYPE``
+      - 0x00000008
       - This flag affects the inverse quantization process.
-    * - __u8
-      - ``intra_vlc_format``
+    * - ``V4L2_MPEG2_PIC_FLAG_INTRA_VLC``
+      - 0x00000010
       - This flag affects the decoding of transform coefficient data.
-    * - __u8
-      - ``alternate_scan``
+    * - ``V4L2_MPEG2_PIC_FLAG_ALT_SCAN``
+      - 0x00000020
       - This flag affects the decoding of transform coefficient data.
-    * - __u8
-      - ``repeat_first_field``
+    * - ``V4L2_MPEG2_PIC_FLAG_REPEAT_FIRST``
+      - 0x00000040
       - This flag affects the decoding process of progressive frames.
-    * - __u16
-      - ``progressive_frame``
+    * - ``V4L2_MPEG2_PIC_FLAG_PROGRESSIVE``
+      - 0x00000080
       - Indicates whether the current frame is progressive.
+    * - ``V4L2_MPEG2_PIC_FLAG_LOAD_INTRA``
+    * - 0x00000100
+      - Indicate whether to load the user-specified intra quantiser matrix.
+    * - ``V4L2_MPEG2_PIC_FLAG_LOAD_NON_INTRA``
+    * - 0x00000200
+      - Indicate whether to load the user-specified non-intra quantiser matrix.
+    * - ``V4L2_MPEG2_PIC_FLAG_LOAD_CHROMA_INTRA``
+    * - 0x00000400
+      - Indicate whether to load the user-specified chroma intra quantiser
+        matrix, only relevant for 4:2:2 and 4:4:4 YUV formats.
+    * - ``V4L2_MPEG2_PIC_FLAG_LOAD_CHROMA_NON_INTRA``
+    * -  0x0000800
+      - Indicate whether to load the user-specified chroma non-intra quantiser
+        matrix, only relevant for 4:2:2 and 4:4:4 YUV formats.
 
 ``V4L2_CID_MPEG_VIDEO_MPEG2_QUANTIZATION (struct)``
     Specifies quantization matrices (as extracted from the bitstream) for the
@@ -1674,23 +1719,6 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
     :stub-columns: 0
     :widths:       1 1 2
 
-    * - __u8
-      - ``load_intra_quantiser_matrix``
-      - One bit to indicate whether to load the ``intra_quantiser_matrix`` data.
-    * - __u8
-      - ``load_non_intra_quantiser_matrix``
-      - One bit to indicate whether to load the ``non_intra_quantiser_matrix``
-	data.
-    * - __u8
-      - ``load_chroma_intra_quantiser_matrix``
-      - One bit to indicate whether to load the
-	``chroma_intra_quantiser_matrix`` data, only relevant for non-4:2:0 YUV
-	formats.
-    * - __u8
-      - ``load_chroma_non_intra_quantiser_matrix``
-      - One bit to indicate whether to load the
-	``chroma_non_intra_quantiser_matrix`` data, only relevant for non-4:2:0
-	YUV formats.
     * - __u8
       - ``intra_quantiser_matrix[64]``
       - The quantization matrix coefficients for intra-coded frames, in zigzag
